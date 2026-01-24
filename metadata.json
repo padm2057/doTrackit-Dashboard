@@ -1,0 +1,7 @@
+{
+  "name": "doTrackit Dashboard",
+  "description": "An execution intelligence dashboard that visualizes project plans, tasks, and durations from JSON input.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
