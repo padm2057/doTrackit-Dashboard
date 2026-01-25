@@ -21,17 +21,41 @@ import { ImageGenerator } from './components/ImageGenerator'; // Assumed compone
 const BUSINESS_DAY_CUTOFF_HOUR = 2; 
 
 const App: React.FC = () => {
-  const [projectData, setProjectData] = useState<ProjectPlan>(DEFAULT_PROJECT_PLAN);
+  // --- PERSISTENCE HELPER ---
+  const loadState = <T,>(key: string, defaultVal: T): T => {
+    if (typeof window === 'undefined') return defaultVal;
+    try {
+        const saved = localStorage.getItem(key);
+        if (saved !== null) return JSON.parse(saved);
+    } catch (e) {
+        console.error(`Failed to load ${key}`, e);
+    }
+    return defaultVal;
+  };
+
+  // --- STATE INITIALIZATION WITH PERSISTENCE ---
+  const [projectData, setProjectData] = useState<ProjectPlan>(() => loadState('dt_project_data', DEFAULT_PROJECT_PLAN));
+  
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
-  const [weekdayHours, setWeekdayHours] = useState<number>(6);
-  const [weekendHours, setWeekendHours] = useState<number>(2);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [bufferPercent, setBufferPercent] = useState<number>(30);
+  
+  const [weekdayHours, setWeekdayHours] = useState<number>(() => loadState('dt_config_weekday', 6));
+  const [weekendHours, setWeekendHours] = useState<number>(() => loadState('dt_config_weekend', 2));
+  
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('dt_theme_dark');
+        if (saved !== null) return JSON.parse(saved);
+        return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    return false;
+  });
+
+  const [bufferPercent, setBufferPercent] = useState<number>(() => loadState('dt_config_buffer', 30));
   
   // LOCK STATE
-  const [isLocked, setIsLocked] = useState(false);
+  const [isLocked, setIsLocked] = useState(() => loadState('dt_state_locked', false));
   
   // LIVE TIMER
   const [now, setNow] = useState(new Date());
@@ -39,6 +63,36 @@ const App: React.FC = () => {
   // Refs to prevent duplicate auto-saves within the same minute
   const lastSystemSaveDate = useRef<string>('');
   
+  // --- PERSISTENCE EFFECTS (Auto-Save) ---
+  useEffect(() => {
+    localStorage.setItem('dt_project_data', JSON.stringify(projectData));
+  }, [projectData]);
+
+  useEffect(() => {
+    localStorage.setItem('dt_config_weekday', JSON.stringify(weekdayHours));
+  }, [weekdayHours]);
+
+  useEffect(() => {
+    localStorage.setItem('dt_config_weekend', JSON.stringify(weekendHours));
+  }, [weekendHours]);
+
+  useEffect(() => {
+    localStorage.setItem('dt_config_buffer', JSON.stringify(bufferPercent));
+  }, [bufferPercent]);
+
+  useEffect(() => {
+    localStorage.setItem('dt_state_locked', JSON.stringify(isLocked));
+  }, [isLocked]);
+
+  useEffect(() => {
+    localStorage.setItem('dt_theme_dark', JSON.stringify(isDarkMode));
+    if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+
   // Helper for input value (YYYY-MM-DD)
   const getInputValue = (date: Date) => {
       return date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
@@ -158,21 +212,6 @@ const App: React.FC = () => {
   
   // State to trigger condensed views for PDF
   const [isPdfExport, setIsPdfExport] = useState(false);
-
-  // Theme Init & Toggle
-  useEffect(() => {
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        setIsDarkMode(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (isDarkMode) {
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-    }
-  }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 

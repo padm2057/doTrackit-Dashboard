@@ -1,5 +1,5 @@
 {
-  "name": "doTrackit Dashboard",
+  "name": "doTrackit Dashboard (dotrakit.agientek.com)",
   "description": "An execution intelligence dashboard that visualizes project plans, tasks, and durations from JSON input.",
   "requestFramePermissions": [
     "microphone"
