@@ -198,9 +198,21 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt })
                     </>
                 )}
             </div>
+            
             {imageUrl && (
-                <div className="mt-2 text-[10px] text-slate-400 text-right print:hidden font-mono">
-                    Generated with gemini-3-pro-image-preview ({imageSize})
+                <div className="mt-4 flex justify-between items-center print:hidden">
+                    <div className="text-[10px] text-slate-400 font-mono">
+                        Generated with gemini-3-pro-image-preview ({imageSize})
+                    </div>
+                    <button
+                        onClick={handleDownload}
+                        className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-700"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                            <path fillRule="evenodd" d="M12 2.25a.75.75 0 01.75.75v11.69l3.22-3.22a.75.75 0 111.06 1.06l-4.5 4.5a.75.75 0 01-1.06 0l-4.5-4.5a.75.75 0 111.06-1.06l3.22 3.22V3a.75.75 0 01.75-.75zm-9 13.5a.75.75 0 01.75.75v2.25a1.5 1.5 0 001.5 1.5h13.5a1.5 1.5 0 001.5-1.5V16.5a.75.75 0 011.5 0v2.25a3 3 0 01-3 3H5.25a3 3 0 01-3-3V16.5a.75.75 0 01.75-.75z" clipRule="evenodd" />
+                        </svg>
+                        Download PNG
+                    </button>
                 </div>
             )}
         </div>
