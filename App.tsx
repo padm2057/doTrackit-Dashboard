@@ -429,20 +429,20 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
             </div>
-            <h1 className="text-xl font-bold tracking-tight">doTrackit <span className="text-indigo-400 font-light">Dashboard</span></h1>
+            <h1 className="text-xl font-bold tracking-tight truncate max-w-[150px] sm:max-w-none">doTrackit <span className="text-indigo-400 font-light hidden sm:inline">Dashboard</span></h1>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
              {/* Cloud Sync Button */}
              <button 
                 onClick={() => setIsCloudModalOpen(true)}
-                className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                className="flex items-center gap-2 px-2 md:px-3 py-1.5 rounded text-sm font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
                 title="Save/Load from Cloud"
              >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
                   <path fillRule="evenodd" d="M5.5 17a4.5 4.5 0 01-1.44-8.765 4.5 4.5 0 018.302-3.046 3.5 3.5 0 014.504 4.272A4 4 0 0115 17H5.5zm3.75-2.75a.75.75 0 001.5 0V9.66l1.95 2.1a.75.75 0 101.1-1.02l-3.25-3.5a.75.75 0 00-1.1 0l-3.25 3.5a.75.75 0 101.1 1.02l1.95-2.1v4.59z" clipRule="evenodd" />
                 </svg>
-                Cloud Sync
+                <span className="hidden md:inline">Cloud Sync</span>
              </button>
 
              {/* Theme Toggle */}
@@ -465,7 +465,7 @@ const App: React.FC = () => {
              {/* Lock Goal Button */}
              <button 
                 onClick={() => setIsLocked(!isLocked)}
-                className={`hidden md:flex items-center gap-2 px-3 py-1.5 rounded text-sm font-bold transition-all border ${
+                className={`flex items-center gap-2 px-2 md:px-3 py-1.5 rounded text-sm font-bold transition-all border ${
                     isLocked 
                     ? 'bg-rose-600 hover:bg-rose-500 text-white border-rose-600 shadow-[0_0_12px_rgba(225,29,72,0.4)]' 
                     : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
@@ -477,40 +477,40 @@ const App: React.FC = () => {
                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                         <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
                     </svg>
-                     Unlock
+                     <span className="hidden md:inline">Unlock</span>
                    </>
                 ) : (
                     <>
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                         <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd" />
                     </svg>
-                    Lock Goal
+                    <span className="hidden md:inline">Lock Goal</span>
                     </>
                 )}
             </button>
 
-            {/* NEW: Primary Report Button */}
+            {/* Primary Report Button (Download) */}
             <button 
                 onClick={handleExportPDF}
-                className="hidden md:flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ring-1 ring-inset ring-indigo-500"
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-2 md:px-3 py-1.5 rounded text-sm font-medium transition-colors shadow-sm ring-1 ring-inset ring-indigo-500"
                 title="Download One-Page Report"
             >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
                   <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z" clipRule="evenodd" />
                   <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" />
                 </svg>
-                Generate Report
+                <span className="hidden md:inline">Generate Report</span>
             </button>
 
             <div className="relative">
                 <button 
                     onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
-                    className="text-sm font-medium bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition-colors flex items-center gap-2"
+                    className="text-sm font-medium bg-slate-800 hover:bg-slate-700 px-2 md:px-3 py-1.5 rounded border border-slate-700 transition-colors flex items-center gap-2"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                     </svg>
-                    Export
+                    <span className="hidden md:inline">Export</span>
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-3 h-3 transition-transform ${isExportMenuOpen ? 'rotate-180' : ''}`}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
                     </svg>
@@ -548,9 +548,12 @@ const App: React.FC = () => {
             {!isLocked && (
                 <button 
                     onClick={() => setIsEditorOpen(true)}
-                    className="text-sm font-medium bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded border border-slate-700 transition-colors flex items-center gap-2"
+                    className="text-sm font-medium bg-slate-800 hover:bg-slate-700 px-2 md:px-3 py-1.5 rounded border border-slate-700 transition-colors flex items-center gap-2"
                 >
-                    Edit Data
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4 md:hidden">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                    </svg>
+                    <span className="hidden md:inline">Edit Data</span>
                 </button>
             )}
           </div>
