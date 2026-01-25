@@ -39,6 +39,16 @@ export const LiveAudioBot: React.FC<LiveAudioBotProps> = ({
   const startSession = async () => {
     setIsConnecting(true);
     try {
+      // @ts-ignore
+      if (window.aistudio && window.aistudio.hasSelectedApiKey) {
+           // @ts-ignore
+           const hasKey = await window.aistudio.hasSelectedApiKey();
+           if (!hasKey) {
+              // @ts-ignore
+              await window.aistudio.openSelectKey();
+           }
+      }
+
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
       // 1. Tool Definition
@@ -203,6 +213,14 @@ export const LiveAudioBot: React.FC<LiveAudioBotProps> = ({
     } catch (e) {
       console.error(e);
       setIsConnecting(false);
+      // @ts-ignore
+      if (e.message && e.message.includes("Requested entity was not found")) {
+           // @ts-ignore
+           if (window.aistudio && window.aistudio.openSelectKey) {
+                // @ts-ignore
+                await window.aistudio.openSelectKey();
+           }
+      }
     }
   };
 

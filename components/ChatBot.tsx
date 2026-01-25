@@ -22,9 +22,29 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatSession = useRef<Chat | null>(null);
 
-  // Re-initialize chat when plan context changes significantly
+  // Invalidate chat session when plan context changes significantly
   useEffect(() => {
+     chatSession.current = null;
+  }, [projectPlan, processedTasks]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(scrollToBottom, [messages, isOpen]);
+
+  const initializeChat = async () => {
     try {
+        // @ts-ignore
+        if (window.aistudio && window.aistudio.hasSelectedApiKey) {
+             // @ts-ignore
+             const hasKey = await window.aistudio.hasSelectedApiKey();
+             if (!hasKey) {
+                // @ts-ignore
+                await window.aistudio.openSelectKey();
+             }
+        }
+
         const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
         
         // Prepare context summary
@@ -60,20 +80,26 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
                 `
             }
         });
+        return true;
         
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to init AI chat", error);
+        if (error.message && error.message.includes("Requested entity was not found")) {
+            // @ts-ignore
+             if (window.aistudio && window.aistudio.openSelectKey) {
+                 // @ts-ignore
+                 await window.aistudio.openSelectKey();
+             }
+             setMessages(prev => [...prev, { role: 'model', text: "API Key Required. Please select a key and try again." }]);
+        } else {
+             setMessages(prev => [...prev, { role: 'model', text: "Connection error: " + (error.message || "Unknown") }]);
+        }
+        return false;
     }
-  }, [projectPlan, processedTasks]); // Re-run if data changes
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(scrollToBottom, [messages, isOpen]);
-
   const handleSend = async () => {
-    if (!input.trim() || !chatSession.current) return;
+    if (!input.trim()) return;
 
     const userMessage = input;
     setInput('');
@@ -81,12 +107,24 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
     setIsLoading(true);
 
     try {
-      const response = await chatSession.current.sendMessage({ message: userMessage });
-      const text = response.text;
-      setMessages(prev => [...prev, { role: 'model', text: text || "I didn't have a response." }]);
+      // Lazy initialization
+      if (!chatSession.current) {
+         const success = await initializeChat();
+         if (!success) {
+             setIsLoading(false);
+             return;
+         }
+      }
+
+      if (chatSession.current) {
+        const response = await chatSession.current.sendMessage({ message: userMessage });
+        const text = response.text;
+        setMessages(prev => [...prev, { role: 'model', text: text || "I didn't have a response." }]);
+      }
     } catch (error) {
       console.error("Gemini Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "Connection error. Please try again." }]);
+      setMessages(prev => [...prev, { role: 'model', text: "I lost the connection. Please try again." }]);
+      chatSession.current = null; // Reset on error
     } finally {
       setIsLoading(false);
     }
