@@ -22,16 +22,17 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const chatSession = useRef<Chat | null>(null);
 
-  // Invalidate chat session when plan context changes significantly
+  // Invalidate chat session ONLY when structural project data changes.
+  // We avoid 'processedTasks' dependency because it updates every minute (time tick), which would reset the chat constantly.
   useEffect(() => {
      chatSession.current = null;
-  }, [projectPlan, processedTasks]);
+  }, [projectPlan.smart_goal, projectPlan.tasks.length, projectPlan.id]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  useEffect(scrollToBottom, [messages, isOpen]);
+  useEffect(scrollToBottom, [messages, isOpen, isLoading]);
 
   const initializeChat = async () => {
     try {
@@ -45,9 +46,14 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
              }
         }
 
-        const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        const apiKey = process.env.API_KEY;
+        if (!apiKey) {
+            throw new Error("API Key not found in environment.");
+        }
+
+        const ai = new GoogleGenAI({ apiKey });
         
-        // Prepare context summary
+        // Prepare context summary using the latest processedTasks for accuracy at init time
         const scheduleContext = processedTasks.map(t => ({
             id: t.id,
             name: t.task_name,
@@ -64,8 +70,9 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
             schedule: scheduleContext
         });
 
+        // Using gemini-3-flash-preview for faster, more reliable chat interactions
         chatSession.current = ai.chats.create({
-            model: 'gemini-3-pro-preview',
+            model: 'gemini-3-flash-preview',
             config: {
                 systemInstruction: `You are an AI Project Manager for the app 'doTrackit'.
                 Your goal is to help the user execute their project.
@@ -124,7 +131,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
     } catch (error) {
       console.error("Gemini Error:", error);
       setMessages(prev => [...prev, { role: 'model', text: "I lost the connection. Please try again." }]);
-      chatSession.current = null; // Reset on error
+      chatSession.current = null; // Reset on error to force re-init next time
     } finally {
       setIsLoading(false);
     }
@@ -159,7 +166,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
                 </div>
                 <div className="flex flex-col items-end">
                     <span className="text-[10px] text-slate-400">Powered by Gemini</span>
-                    <span className="text-[9px] text-indigo-400 bg-indigo-900/50 px-1 rounded">3.0 Pro</span>
+                    <span className="text-[9px] text-indigo-400 bg-indigo-900/50 px-1 rounded">3.0 Flash</span>
                 </div>
             </div>
             
