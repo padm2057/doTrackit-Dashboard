@@ -340,7 +340,7 @@ export const LiveAudioBot: React.FC<LiveAudioBotProps> = ({
         </button>
         
         {isActive && (
-             <div className="fixed bottom-24 right-24 bg-rose-600 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-lg z-50 animate-bounce print:hidden">
+             <div className="fixed bottom-20 right-24 bg-rose-600 text-white text-xs font-bold px-3 py-1 rounded-lg shadow-lg z-50 animate-bounce print:hidden">
                  Live Audio Active
              </div>
         )}
