@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -34,7 +34,11 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
   startDate,
   readOnly = false
 }) => {
-  // Local state removed, using props instead
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const data = useMemo(() => {
     // Helper to calc duration
@@ -130,57 +134,63 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
       
       <div className="flex-1 min-h-0 min-w-0 relative">
         <div className="absolute inset-0">
-          <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0} debounce={200}>
-            <BarChart
-              layout="vertical"
-              data={data}
-              margin={{ top: 10, right: 60, left: 10, bottom: 5 }}
-              barCategoryGap={20}
-            >
-              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={true} stroke={gridColor} />
-              <XAxis type="number" hide />
-              <YAxis 
-                dataKey="name" 
-                type="category" 
-                width={85} 
-                tick={{ fontSize: 11, fill: axisColor, fontWeight: 600 }}
-                interval={0}
-              />
-              <Tooltip
-                cursor={{ fill: 'transparent' }}
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const d = payload[0].payload;
-                    return (
-                      <div className="bg-white dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 shadow-lg rounded text-xs z-50">
-                        <div className="font-bold text-slate-800 dark:text-slate-200">{d.name}</div>
-                        <div className="text-slate-500 dark:text-slate-400 mb-1">{d.desc}</div>
-                        <div className="flex justify-between gap-4 border-t border-slate-100 dark:border-slate-700 pt-1 mt-1">
-                          <span className="text-slate-600 dark:text-slate-400">Duration:</span>
-                          <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{d.days} Days</span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span className="text-slate-600 dark:text-slate-400">Launch:</span>
-                          <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{d.date}</span>
-                        </div>
-                      </div>
-                    );
-                  }
-                  return null;
-                }}
-              />
-              <Bar dataKey="days" radius={[0, 4, 4, 0]} barSize={32}>
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={entry.opacity} />
-                ))}
-                <LabelList 
-                  dataKey="date" 
-                  position="right" 
-                  style={{ fontSize: '11px', fontWeight: 'bold', fill: isDarkMode ? '#94a3b8' : '#475569' }} 
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                <BarChart
+                layout="vertical"
+                data={data}
+                margin={{ top: 10, right: 60, left: 10, bottom: 5 }}
+                barCategoryGap={20}
+                >
+                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={true} stroke={gridColor} />
+                <XAxis type="number" hide />
+                <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={85} 
+                    tick={{ fontSize: 11, fill: axisColor, fontWeight: 600 }}
+                    interval={0}
                 />
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+                <Tooltip
+                    cursor={{ fill: 'transparent' }}
+                    content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                        const d = payload[0].payload;
+                        return (
+                        <div className="bg-white dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 shadow-lg rounded text-xs z-50">
+                            <div className="font-bold text-slate-800 dark:text-slate-200">{d.name}</div>
+                            <div className="text-slate-500 dark:text-slate-400 mb-1">{d.desc}</div>
+                            <div className="flex justify-between gap-4 border-t border-slate-100 dark:border-slate-700 pt-1 mt-1">
+                            <span className="text-slate-600 dark:text-slate-400">Duration:</span>
+                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{d.days} Days</span>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                            <span className="text-slate-600 dark:text-slate-400">Launch:</span>
+                            <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{d.date}</span>
+                            </div>
+                        </div>
+                        );
+                    }
+                    return null;
+                    }}
+                />
+                <Bar dataKey="days" radius={[0, 4, 4, 0]} barSize={32}>
+                    {data.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={entry.opacity} />
+                    ))}
+                    <LabelList 
+                    dataKey="date" 
+                    position="right" 
+                    style={{ fontSize: '11px', fontWeight: 'bold', fill: isDarkMode ? '#94a3b8' : '#475569' }} 
+                    />
+                </Bar>
+                </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
+            </div>
+          )}
         </div>
         
         {/* Comparison Text Overlay */}

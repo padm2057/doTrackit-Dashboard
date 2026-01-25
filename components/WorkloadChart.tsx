@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   BarChart,
   Bar,
@@ -31,6 +31,11 @@ export const WorkloadChart: React.FC<WorkloadChartProps> = ({
   setWeekendHours,
   readOnly = false
 }) => {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
   
   // Extract unique phases present in the data for stacking
   const phases = useMemo(() => {
@@ -114,77 +119,83 @@ export const WorkloadChart: React.FC<WorkloadChartProps> = ({
       
       <div className="flex-1 min-h-0 min-w-0 relative">
         <div className="absolute inset-0">
-          <ResponsiveContainer width="99%" height="100%" minWidth={0} minHeight={0} debounce={200}>
-            <BarChart
-              data={data}
-              margin={{
-                top: 5,
-                right: 10,
-                left: 0,
-                bottom: 5,
-              }}
-            >
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
-              <XAxis 
-                dataKey="label" 
-                stroke={axisColor} 
-                fontSize={11} 
-                tickMargin={5}
-                interval="preserveStartEnd"
-              />
-              <YAxis 
-                stroke={axisColor} 
-                fontSize={11}
-                width={30}
-                label={{ value: 'Hours', angle: -90, position: 'insideLeft', style: { fill: axisColor, fontSize: 10 } }}
-              />
-              <Tooltip
-                cursor={{ fill: isDarkMode ? '#1e293b' : '#f1f5f9' }}
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const item = payload[0].payload as DailyWorkload;
-                    // Sort payload by value desc to show biggest contributors first
-                    const sortedPayload = [...payload].sort((a, b) => Number(b.value) - Number(a.value));
-                    
-                    return (
-                      <div className="bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg text-xs z-50">
-                        <p className="font-bold text-slate-800 dark:text-slate-200 mb-1 border-b border-slate-100 dark:border-slate-700 pb-1">{item.tooltipLabel}</p>
-                        
-                        {sortedPayload.map((entry: any) => (
-                            <div key={entry.name} className="flex items-center gap-2 mb-0.5">
-                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                                <span className="text-slate-600 dark:text-slate-300 font-medium">{entry.name}:</span>
-                                <span className="text-slate-900 dark:text-slate-100 font-bold">{entry.value}h</span>
-                            </div>
-                        ))}
-                        
-                        <div className="mt-2 pt-1 border-t border-slate-100 dark:border-slate-700 flex justify-between gap-4">
-                            <span className="text-slate-500 dark:text-slate-400">Total: {item.hours}h</span>
-                            <span className="text-slate-400 dark:text-slate-500">Limit: {item.limit}h</span>
-                        </div>
-
-                        {item.hours > item.limit && (
-                          <p className="text-red-500 font-bold mt-1 text-right">Overloaded!</p>
-                        )}
-                      </div>
-                    );
-                  }
-                  return null;
+          {isMounted ? (
+            <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                <BarChart
+                data={data}
+                margin={{
+                    top: 5,
+                    right: 10,
+                    left: 0,
+                    bottom: 5,
                 }}
-              />
-              
-              {phases.map(phase => (
-                  <Bar 
-                      key={phase} 
-                      dataKey={phase} 
-                      stackId="a" 
-                      fill={getPhaseColor(phase)} 
-                      animationDuration={500}
-                  />
-              ))}
+                >
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={gridColor} />
+                <XAxis 
+                    dataKey="label" 
+                    stroke={axisColor} 
+                    fontSize={11} 
+                    tickMargin={5}
+                    interval="preserveStartEnd"
+                />
+                <YAxis 
+                    stroke={axisColor} 
+                    fontSize={11}
+                    width={30}
+                    label={{ value: 'Hours', angle: -90, position: 'insideLeft', style: { fill: axisColor, fontSize: 10 } }}
+                />
+                <Tooltip
+                    cursor={{ fill: isDarkMode ? '#1e293b' : '#f1f5f9' }}
+                    content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                        const item = payload[0].payload as DailyWorkload;
+                        // Sort payload by value desc to show biggest contributors first
+                        const sortedPayload = [...payload].sort((a, b) => Number(b.value) - Number(a.value));
+                        
+                        return (
+                        <div className="bg-white dark:bg-slate-800 p-3 border border-slate-200 dark:border-slate-700 shadow-lg rounded-lg text-xs z-50">
+                            <p className="font-bold text-slate-800 dark:text-slate-200 mb-1 border-b border-slate-100 dark:border-slate-700 pb-1">{item.tooltipLabel}</p>
+                            
+                            {sortedPayload.map((entry: any) => (
+                                <div key={entry.name} className="flex items-center gap-2 mb-0.5">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }}></div>
+                                    <span className="text-slate-600 dark:text-slate-300 font-medium">{entry.name}:</span>
+                                    <span className="text-slate-900 dark:text-slate-100 font-bold">{entry.value}h</span>
+                                </div>
+                            ))}
+                            
+                            <div className="mt-2 pt-1 border-t border-slate-100 dark:border-slate-700 flex justify-between gap-4">
+                                <span className="text-slate-500 dark:text-slate-400">Total: {item.hours}h</span>
+                                <span className="text-slate-400 dark:text-slate-500">Limit: {item.limit}h</span>
+                            </div>
 
-            </BarChart>
-          </ResponsiveContainer>
+                            {item.hours > item.limit && (
+                            <p className="text-red-500 font-bold mt-1 text-right">Overloaded!</p>
+                            )}
+                        </div>
+                        );
+                    }
+                    return null;
+                    }}
+                />
+                
+                {phases.map(phase => (
+                    <Bar 
+                        key={phase} 
+                        dataKey={phase} 
+                        stackId="a" 
+                        fill={getPhaseColor(phase)} 
+                        animationDuration={500}
+                    />
+                ))}
+
+                </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+                <div className="w-5 h-5 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
+            </div>
+          )}
         </div>
       </div>
     </div>
