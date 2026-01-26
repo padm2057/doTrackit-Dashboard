@@ -112,14 +112,24 @@ export const calculateProjectSchedule = (
           // Determine available capacity
           let available = 0;
           
-          // Special Case: If this is the start day of a forced task OR a completed task, we allow overload
-          if (allowOverload && dateKey === startKey) {
-              // UNDO COLLAPSE: Use the daily limit instead of infinite.
-              // If limit is 0 (e.g. weekend), use weekdayHours (or 8) as a fallback chunk size.
-              // This ensures we distribute the work in reasonable chunks even if force-starting on an off-day.
-              const fallbackCap = weekdayHours > 0 ? weekdayHours : 8;
-              available = limit > 0 ? limit : fallbackCap; 
+          // Strategy: If allowOverload is true (Completed/Forced), we prioritize continuity.
+          // We ignore 'used' capacity and can overlap other tasks.
+          // However, we still respect Business Days (skipping weekends if limit=0), unless it's the forced start day.
+          if (allowOverload) {
+              if (limit > 0) {
+                  // Business Day: Take full daily limit (creates overload in ledger if used > 0)
+                  available = limit;
+              } else {
+                  // Off Day (e.g. Weekend): Only allow if it is the explicit Start Date
+                  if (dateKey === startKey) {
+                      const fallbackCap = weekdayHours > 0 ? weekdayHours : 8;
+                      available = fallbackCap;
+                  } else {
+                      available = 0; // Skip off-day
+                  }
+              }
           } else {
+             // Normal Floating Task: Respect remaining capacity
              if (limit > 0) {
                  available = getRemainingCapacity(currentCursor);
              }
@@ -164,8 +174,7 @@ export const calculateProjectSchedule = (
   };
 
   // --- PASS 1: COMPLETED ---
-  // Completed tasks are anchors. We allow them to overload the day they were completed on
-  // to ensure they are visually represented on that specific day, even if capacity was full.
+  // Completed tasks are anchors. We allow them to overload the schedule to preserve their historical reality.
   completedTasks.forEach(task => {
       const anchor = new Date(task.completionDate!);
       scheduleTask(task, anchor, true, true); 
@@ -175,10 +184,8 @@ export const calculateProjectSchedule = (
   // These take precedence over floating tasks and can overload the day
   forcedTasks.forEach(task => {
       // Use the forced date directly
-      // Parse YYYY-MM-DD safely
       const [y, m, d] = task.forcedDate!.split('-').map(Number);
       const anchor = new Date(y, m - 1, d);
-      // isFixedStart = true, allowOverload = true
       scheduleTask(task, anchor, true, true);
   });
 
