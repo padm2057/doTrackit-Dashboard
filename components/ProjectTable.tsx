@@ -4,11 +4,15 @@ import { ProcessedTask } from '../types';
 interface ProjectTableProps {
   tasks: ProcessedTask[];
   onTaskToggle?: (taskId: string) => void;
+  onForceTask?: (taskId: string) => void;
 }
 
-export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle }) => {
+export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle, onForceTask }) => {
   const [isOpen, setIsOpen] = useState(false);
   const totalHours = tasks.reduce((sum, t) => sum + t.duration_hours, 0);
+
+  // Find the first pending task ID to enable the "Move to Today" button only for it
+  const firstPendingId = tasks.find(t => !t.isCompleted)?.id;
 
   const getPhaseColor = (phase: string) => {
     if (phase.includes('Design')) return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800';
@@ -76,6 +80,9 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle 
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                     Task & Phase
                 </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-32">
+                    Action
+                </th>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-1/4">
                     Workload
                 </th>
@@ -93,6 +100,10 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle 
                     const p = tasks.find(t => t.id === pId);
                     return p && !p.isCompleted;
                 });
+                
+                const isNextTask = task.id === firstPendingId;
+                // Allow action if it's the Next Task (Pending) OR if it is Completed (to re-anchor to today)
+                const showActionButton = (isNextTask && !task.isCompleted && !task.forcedDate) || (task.isCompleted);
 
                 return (
                     <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -132,6 +143,25 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle 
                                 ✓ Done: {formatCompletionDate(task.completionDate)}
                             </div>
                         )}
+                        {task.forcedDate && !task.isCompleted && (
+                            <div className="mt-1 text-xs text-rose-600 dark:text-rose-400 font-bold uppercase">
+                                🔥 Forced: Today
+                            </div>
+                        )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap align-top">
+                         {showActionButton && onForceTask && (
+                             <button
+                                onClick={() => onForceTask(task.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/30 rounded text-xs font-bold uppercase tracking-wider hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors shadow-sm"
+                                title="Force start this task today (or mark done today), ignoring capacity."
+                             >
+                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+                                 </svg>
+                                 {task.isCompleted ? 'Redo Today' : 'Do Today'}
+                             </button>
+                         )}
                     </td>
                     <td className="px-6 py-4 align-top">
                         <div className="w-full max-w-xs">

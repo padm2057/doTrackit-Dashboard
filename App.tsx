@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { ProjectPlan, DailyLog } from './types';
+import { ProjectPlan, DailyLog, Task } from './types';
 import { DEFAULT_PROJECT_PLAN } from './constants';
 import { ProjectTable } from './components/ProjectTable';
 import { ProjectChart } from './components/ProjectChart';
@@ -413,25 +413,60 @@ const App: React.FC = () => {
                 let completionDateStr: string | undefined = undefined;
 
                 if (newStatus) {
-                    const currentTime = new Date();
-                    if (currentTime.getHours() < BUSINESS_DAY_CUTOFF_HOUR) {
-                            const yesterdayEnd = new Date(currentTime);
-                            yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
-                            yesterdayEnd.setHours(23, 59, 59, 0); 
-                            completionDateStr = yesterdayEnd.toISOString();
+                    const visualTask = processedTasks.find(pt => pt.id === taskId);
+                    
+                    if (visualTask) {
+                        // Use business date for 'Now' to handle late night sessions correctly
+                        const now = new Date();
+                        const businessNow = getBusinessDate(now); 
+
+                        const taskStart = new Date(visualTask.startDate);
+                        
+                        // Compare dates (YYYY-MM-DD) without time component
+                        const todayZero = new Date(businessNow.getFullYear(), businessNow.getMonth(), businessNow.getDate());
+                        const taskZero = new Date(taskStart.getFullYear(), taskStart.getMonth(), taskStart.getDate());
+
+                        if (taskZero > todayZero) {
+                             // Future task: Snap to Today (executed early)
+                             completionDateStr = now.toISOString(); 
+                        } else {
+                             // Past/Present task: Freeze at scheduled start (historical accuracy)
+                             completionDateStr = visualTask.startDate.toISOString();
+                        }
                     } else {
-                            completionDateStr = currentTime.toISOString();
+                        // Fallback
+                        completionDateStr = new Date().toISOString();
                     }
                 }
                 return { 
                     ...t, 
                     isCompleted: newStatus,
-                    completionDate: completionDateStr
+                    completionDate: completionDateStr,
+                    forcedDate: undefined // Clear forced date if marked completed
                 };
             }
             return t;
         })
     }));
+  };
+
+  const handleForceTaskToToday = (taskId: string) => {
+      setProjectData(prev => ({
+          ...prev,
+          tasks: prev.tasks.map(t => {
+              if (t.id === taskId) {
+                  const updates: Partial<Task> = {
+                      forcedDate: getInputValue(new Date()) // Set to YYYY-MM-DD
+                  };
+                  // If task is completed, ensure its completion anchor also moves to today
+                  if (t.isCompleted) {
+                      updates.completionDate = new Date().toISOString();
+                  }
+                  return { ...t, ...updates };
+              }
+              return t;
+          })
+      }));
   };
 
   const dailyWorkload = useMemo(() => {
@@ -814,7 +849,11 @@ const App: React.FC = () => {
         
         {/* Workload Table (Hidden in PDF) */}
         <div className="space-y-8 pdf-hide">
-            <ProjectTable tasks={processedTasks} onTaskToggle={handleTaskToggle} />
+            <ProjectTable 
+                tasks={processedTasks} 
+                onTaskToggle={handleTaskToggle} 
+                onForceTask={handleForceTaskToToday}
+            />
         </div>
 
         {/* Page Break (Hidden in PDF, visible in Print) */}

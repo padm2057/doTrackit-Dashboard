@@ -45,9 +45,6 @@ export const calculateProjectSchedule = (
   };
 
   // --- TOPOLOGICAL SORT FOR INCOMPLETE TASKS ---
-  // We need a robust order for incomplete tasks to respect dependencies.
-  // Completed tasks are processed separately first.
-  
   const getTopologicalOrder = (allTasks: Task[]): Task[] => {
       const visited = new Set<string>();
       const sorted: Task[] = [];
@@ -66,18 +63,18 @@ export const calculateProjectSchedule = (
 
   const sortedTasks = getTopologicalOrder(tasks);
   
-  // 1. Process COMPLETED Tasks First (Fixed Anchors)
-  // They are anchored to their completionDate.
-  // "When a task is done, it parks itself on that day... difference scheduled for the next day."
+  // 1. Process COMPLETED Tasks (Fixed Anchors)
   const completedTasks = tasks.filter(t => t.isCompleted && t.completionDate)
     .sort((a, b) => new Date(a.completionDate!).getTime() - new Date(b.completionDate!).getTime());
 
-  // 2. Process INCOMPLETE Tasks Second (Floating)
-  // They respect dependencies (which might include completed tasks)
-  const incompleteTasks = sortedTasks.filter(t => !t.isCompleted || !t.completionDate);
+  // 2. Process FORCED PENDING Tasks (Fixed Start, Ignore Capacity on Day 1)
+  const forcedTasks = sortedTasks.filter(t => !t.isCompleted && t.forcedDate);
+
+  // 3. Process FLOATING PENDING Tasks (Respect Dependencies & Capacity)
+  const floatingTasks = sortedTasks.filter(t => !t.isCompleted && !t.forcedDate);
 
   // --- SHARED ALLOCATION LOGIC ---
-  const scheduleTask = (task: Task, anchorDate: Date, isFixedStart: boolean) => {
+  const scheduleTask = (task: Task, anchorDate: Date, isFixedStart: boolean, allowOverload: boolean = false) => {
       let remainingDuration = task.duration_hours;
       let currentCursor = new Date(anchorDate);
       
@@ -91,8 +88,7 @@ export const calculateProjectSchedule = (
       let actualStartDate: Date | null = null;
       let lastDate: Date = new Date(currentCursor);
 
-      // If Incomplete (Floating), we must find the first day with ANY capacity
-      // If Completed (Fixed), we force start on the anchor day, even if capacity is full (it spills immediately)
+      // If Floating, find first available capacity
       if (!isFixedStart) {
           while (loops < 1000) {
               const cap = getRemainingCapacity(currentCursor);
@@ -105,6 +101,7 @@ export const calculateProjectSchedule = (
 
       // Record the visual start date
       actualStartDate = new Date(currentCursor);
+      const startKey = getDateKey(actualStartDate);
 
       loops = 0;
       while (remainingDuration > 0.001 && loops < 10000) {
@@ -112,17 +109,29 @@ export const calculateProjectSchedule = (
           const dateKey = getDateKey(currentCursor);
           const limit = getDailyLimit(currentCursor);
           
-          if (limit > 0) {
-              const available = getRemainingCapacity(currentCursor);
+          // Determine available capacity
+          let available = 0;
+          
+          // Special Case: If this is the start day of a forced task OR a completed task, we allow overload
+          if (allowOverload && dateKey === startKey) {
+              // UNDO COLLAPSE: Use the daily limit instead of infinite.
+              // If limit is 0 (e.g. weekend), use weekdayHours (or 8) as a fallback chunk size.
+              // This ensures we distribute the work in reasonable chunks even if force-starting on an off-day.
+              const fallbackCap = weekdayHours > 0 ? weekdayHours : 8;
+              available = limit > 0 ? limit : fallbackCap; 
+          } else {
+             if (limit > 0) {
+                 available = getRemainingCapacity(currentCursor);
+             }
+          }
+          
+          if (available > 0) {
+              const toAlloc = Math.min(remainingDuration, available);
+              consumeCapacity(currentCursor, toAlloc);
               
-              if (available > 0) {
-                  const toAlloc = Math.min(remainingDuration, available);
-                  consumeCapacity(currentCursor, toAlloc);
-                  
-                  remainingDuration -= toAlloc;
-                  distribution[dateKey] = (distribution[dateKey] || 0) + toAlloc;
-                  lastDate = new Date(currentCursor);
-              }
+              remainingDuration -= toAlloc;
+              distribution[dateKey] = (distribution[dateKey] || 0) + toAlloc;
+              lastDate = new Date(currentCursor);
           }
           
           if (remainingDuration > 0.001) {
@@ -133,21 +142,20 @@ export const calculateProjectSchedule = (
       }
 
       const actualEndDate = new Date(lastDate);
-      // Set time to end of work day approx
       actualEndDate.setHours(17, 0, 0, 0);
 
       const diffTime = actualStartDate.getTime() - projectStartDate.getTime();
       const startOffsetDays = diffTime / (1000 * 60 * 60 * 24);
       
       const durationDiff = actualEndDate.getTime() - actualStartDate.getTime();
-      const durationDays = durationDiff / (1000 * 60 * 60 * 24); // Visual days span
+      const durationDays = durationDiff / (1000 * 60 * 60 * 24);
 
       const processed: ProcessedTask = {
           ...task,
           startDate: actualStartDate,
           endDate: actualEndDate,
           startOffsetDays,
-          durationDays: Math.max(0.2, durationDays), // Ensure at least small visibility
+          durationDays: Math.max(0.2, durationDays),
           rowIndex: 0,
           scheduleDistribution: distribution
       };
@@ -155,26 +163,32 @@ export const calculateProjectSchedule = (
       taskMap.set(task.id, processed);
   };
 
-  // --- EXECUTE PASS 1: COMPLETED ---
+  // --- PASS 1: COMPLETED ---
+  // Completed tasks are anchors. We allow them to overload the day they were completed on
+  // to ensure they are visually represented on that specific day, even if capacity was full.
   completedTasks.forEach(task => {
-      // Anchor: Completion Date provided by user/system
       const anchor = new Date(task.completionDate!);
-      scheduleTask(task, anchor, true); // true = Fixed Start (Parks on that day)
+      scheduleTask(task, anchor, true, true); 
   });
 
-  // --- EXECUTE PASS 2: INCOMPLETE ---
-  incompleteTasks.forEach(task => {
-      // Anchor: Max(Dependencies End, Project Start, Now)
+  // --- PASS 2: FORCED PENDING ---
+  // These take precedence over floating tasks and can overload the day
+  forcedTasks.forEach(task => {
+      // Use the forced date directly
+      // Parse YYYY-MM-DD safely
+      const [y, m, d] = task.forcedDate!.split('-').map(Number);
+      const anchor = new Date(y, m - 1, d);
+      // isFixedStart = true, allowOverload = true
+      scheduleTask(task, anchor, true, true);
+  });
+
+  // --- PASS 3: FLOATING PENDING ---
+  floatingTasks.forEach(task => {
       let anchor = projectStartDate.getTime();
       
       task.predecessors.forEach(pid => {
           const pred = taskMap.get(pid);
           if (pred) {
-              // Standard Finish-to-Start: Start after predecessor ends
-              // Use predecessor's calculated EndDate.
-              // Note: If pred finished on Tuesday (full day), we start Wednesday?
-              // The `scheduleTask` logic for Floating tasks finds the *Next Available Slot*.
-              // So passing Pred.EndDate is correct; if Pred used up Tuesday, logic will skip to Wednesday.
               if (pred.endDate.getTime() > anchor) {
                   anchor = pred.endDate.getTime();
               }
@@ -190,11 +204,9 @@ export const calculateProjectSchedule = (
           }
       }
 
-      scheduleTask(task, new Date(anchor), false); // false = Floating (Find capacity)
+      scheduleTask(task, new Date(anchor), false); 
   });
 
-  // Assign Row Indices based on original sort
-  // Use the original passed order or topological? Original array order is usually preferred for UI stability.
   const result = Array.from(taskMap.values());
   const final = result.map(p => {
       const idx = tasks.findIndex(t => t.id === p.id);
@@ -235,14 +247,12 @@ export const calculateDailyWorkload = (
   const endCursor = new Date(maxDate);
   endCursor.setHours(23, 59, 59, 999);
   
-  // Pad the chart a bit if empty
   if (startCursor.getTime() === endCursor.getTime()) {
       endCursor.setDate(endCursor.getDate() + 7);
   }
 
   const workloadMap = new Map<string, DailyWorkload>();
 
-  // Pre-fill Timeline
   for (let d = new Date(startCursor); d <= endCursor; d.setDate(d.getDate() + 1)) {
     const isWeekend = d.getDay() === 0 || d.getDay() === 6;
     const limit = isWeekend ? weekendHours : weekdayHours;
@@ -262,27 +272,20 @@ export const calculateDailyWorkload = (
     });
   }
 
-  // --- AGGREGATE USING EXACT DISTRIBUTION FROM SCHEDULER ---
   tasks.forEach(task => {
       if (task.scheduleDistribution) {
           Object.entries(task.scheduleDistribution).forEach(([dateKey, hours]) => {
               const dayEntry = workloadMap.get(dateKey);
-              // If day exists in range (it should)
               if (dayEntry) {
                   dayEntry.hours += hours;
                   if (task.phase) {
                       dayEntry[task.phase] = (dayEntry[task.phase] || 0) + hours;
                   }
-              } else {
-                  // Task might have spilled beyond our initial min/max calc?
-                  // Should handle strictly but for now ignore or extend?
-                  // In typical use, min/max covers all.
               }
           });
       }
   });
 
-  // Formatting
   workloadMap.forEach(entry => {
     entry.hours = Number(entry.hours.toFixed(2));
     Object.keys(entry).forEach(key => {

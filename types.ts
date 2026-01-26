@@ -7,6 +7,7 @@ export interface Task {
   predecessors: string[];
   isCompleted?: boolean;
   completionDate?: string; // ISO Date string of when it was marked done (adjusted for 2am rule)
+  forcedDate?: string; // ISO Date string (YYYY-MM-DD) to force start this task
 }
 
 export interface ProcessedTask extends Task {
