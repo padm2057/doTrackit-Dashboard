@@ -113,11 +113,9 @@ export const calculateProjectSchedule = (
           let available = 0;
           
           // Strategy: If allowOverload is true (Completed/Forced), we prioritize continuity.
-          // We ignore 'used' capacity and can overlap other tasks.
-          // However, we still respect Business Days (skipping weekends if limit=0), unless it's the forced start day.
           if (allowOverload) {
               if (limit > 0) {
-                  // Business Day: Take full daily limit (creates overload in ledger if used > 0)
+                  // Business Day: Take full daily limit
                   available = limit;
               } else {
                   // Off Day (e.g. Weekend): Only allow if it is the explicit Start Date
@@ -137,7 +135,13 @@ export const calculateProjectSchedule = (
           
           if (available > 0) {
               const toAlloc = Math.min(remainingDuration, available);
-              consumeCapacity(currentCursor, toAlloc);
+              
+              // LOGIC UPDATE: For Completed tasks, only consume capacity on the Start Day.
+              // We treat the "Tail" (subsequent days) as visual history that shouldn't block future planning.
+              // This allows successors to be scheduled on "Tomorrow" even if the completed task spills over visually.
+              if (!task.isCompleted || (task.isCompleted && dateKey === startKey)) {
+                  consumeCapacity(currentCursor, toAlloc);
+              }
               
               remainingDuration -= toAlloc;
               distribution[dateKey] = (distribution[dateKey] || 0) + toAlloc;
@@ -174,16 +178,14 @@ export const calculateProjectSchedule = (
   };
 
   // --- PASS 1: COMPLETED ---
-  // Completed tasks are anchors. We allow them to overload the schedule to preserve their historical reality.
+  // Completed tasks are anchors.
   completedTasks.forEach(task => {
       const anchor = new Date(task.completionDate!);
       scheduleTask(task, anchor, true, true); 
   });
 
   // --- PASS 2: FORCED PENDING ---
-  // These take precedence over floating tasks and can overload the day
   forcedTasks.forEach(task => {
-      // Use the forced date directly
       const [y, m, d] = task.forcedDate!.split('-').map(Number);
       const anchor = new Date(y, m - 1, d);
       scheduleTask(task, anchor, true, true);
@@ -196,13 +198,24 @@ export const calculateProjectSchedule = (
       task.predecessors.forEach(pid => {
           const pred = taskMap.get(pid);
           if (pred) {
-              if (pred.endDate.getTime() > anchor) {
-                  anchor = pred.endDate.getTime();
+              let pEnd = pred.endDate.getTime();
+              
+              // LOGIC UPDATE: If predecessor is completed, push successor to the NEXT calendar day relative to completion.
+              // We use startDate (completion anchor) + 1 day, ignoring the visual tail of the completed task.
+              if (pred.isCompleted) {
+                  const nextDay = new Date(pred.startDate);
+                  nextDay.setDate(nextDay.getDate() + 1);
+                  nextDay.setHours(9, 0, 0, 0);
+                  pEnd = nextDay.getTime();
+              }
+
+              if (pEnd > anchor) {
+                  anchor = pEnd;
               }
           }
       });
 
-      // Live Mode: If today is later than logic dictates, push to today
+      // Live Mode check
       if (currentDate) {
           const today9am = new Date(currentDate);
           today9am.setHours(9,0,0,0);
