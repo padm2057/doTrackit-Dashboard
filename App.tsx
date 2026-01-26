@@ -63,7 +63,11 @@ const App: React.FC = () => {
   // Refs to prevent duplicate auto-saves within the same minute
   const lastSystemSaveDate = useRef<string>('');
   
-  // --- PERSISTENCE EFFECTS (Auto-Save) ---
+  // Ref to track if we just received a remote update (to prevent echo-save)
+  const isRemoteUpdate = useRef(false);
+  const isFirstRender = useRef(true);
+  
+  // --- PERSISTENCE EFFECTS (Local Storage) ---
   useEffect(() => {
     localStorage.setItem('dt_project_data', JSON.stringify(projectData));
   }, [projectData]);
@@ -92,6 +96,105 @@ const App: React.FC = () => {
         document.documentElement.classList.remove('dark');
     }
   }, [isDarkMode]);
+
+  // --- CLOUD SYNC & REALTIME ---
+
+  // 1. Auto-Load Latest Project on Start
+  useEffect(() => {
+    const initCloud = async () => {
+        const client = getSupabase();
+        if (client) {
+            try {
+                 const { data, error } = await client
+                    .from('projects')
+                    .select('data')
+                    .order('updated_at', { ascending: false })
+                    .limit(1)
+                    .single();
+                 
+                 if (data && data.data) {
+                     console.log("Loaded latest project from cloud.");
+                     // Mark as remote so we don't immediately save back
+                     isRemoteUpdate.current = true;
+                     setProjectData(data.data as ProjectPlan);
+                 }
+            } catch (e) {
+                // Silent fail on auto-load
+            }
+        }
+    };
+    initCloud();
+  }, []);
+
+  // 2. Realtime Subscription (Cross-Device Sync)
+  useEffect(() => {
+    const client = getSupabase();
+    if (!client || !projectData.id) return;
+
+    console.log("Subscribing to realtime updates for:", projectData.id);
+    const channel = client
+      .channel(`project-sync-${projectData.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'projects',
+          filter: `id=eq.${projectData.id}`,
+        },
+        (payload) => {
+          if (payload.new && payload.new.data) {
+             const newData = payload.new.data as ProjectPlan;
+             // Compare IDs or simple hash to check equality if needed
+             // For now, simply trust the latest push from server
+             console.log("Received realtime update.");
+             isRemoteUpdate.current = true;
+             setProjectData(newData);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+        client.removeChannel(channel);
+    };
+  }, [projectData.id]);
+
+  // 3. Debounced Cloud Auto-Save
+  useEffect(() => {
+    if (isFirstRender.current) {
+        isFirstRender.current = false;
+        return;
+    }
+
+    // If this change came from the cloud, don't echo it back
+    if (isRemoteUpdate.current) {
+        isRemoteUpdate.current = false;
+        return;
+    }
+
+    const handler = setTimeout(async () => {
+        const client = getSupabase();
+        if (client && projectData.id) {
+            try {
+                const { error } = await client.from('projects').upsert({
+                    id: projectData.id,
+                    name: projectData.smart_goal.substring(0, 50),
+                    data: projectData,
+                    updated_at: new Date().toISOString()
+                });
+                if (!error) {
+                    console.log("Auto-saved to cloud.");
+                }
+            } catch (e) {
+                console.error("Auto-save failed", e);
+            }
+        }
+    }, 3000); // 3-second debounce
+
+    return () => clearTimeout(handler);
+  }, [projectData]);
+
 
   // Helper for input value (YYYY-MM-DD)
   const getInputValue = (date: Date) => {
