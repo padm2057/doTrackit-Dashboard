@@ -60,7 +60,9 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
         }
 
         if (!apiKey) {
-            throw new Error("API Key not found in environment.");
+            // Last ditch attempt: if we are in an environment where process.env isn't updating,
+            // we throw, but catch it to show a helpful message.
+            throw new Error("API Key not found in environment. Please ensure you selected a key.");
         }
 
         const ai = new GoogleGenAI({ apiKey });
@@ -103,13 +105,13 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
         
     } catch (error: any) {
         console.error("Failed to init AI chat", error);
-        if (error.message && error.message.includes("Requested entity was not found")) {
+        if (error.message && (error.message.includes("Requested entity was not found") || error.message.includes("API Key not found"))) {
             // @ts-ignore
-             if (window.aistudio && window.aistudio.openSelectKey) {
+             if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
                  // @ts-ignore
                  await window.aistudio.openSelectKey();
              }
-             setMessages(prev => [...prev, { role: 'model', text: "API Key Required. Please select a key and try again." }]);
+             setMessages(prev => [...prev, { role: 'model', text: "Please select an API Key to continue." }]);
         } else {
              setMessages(prev => [...prev, { role: 'model', text: "Connection error: " + (error.message || "Unknown") }]);
         }
