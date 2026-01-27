@@ -39,29 +39,31 @@ export const LiveAudioBot: React.FC<LiveAudioBotProps> = ({
   const startSession = async () => {
     setIsConnecting(true);
     try {
-      // Handle API Key Selection
+      let apiKey = process.env.API_KEY;
+
+      // Aggressively check/prompt for key
       // @ts-ignore
       if (typeof window !== 'undefined' && window.aistudio) {
            // @ts-ignore
-           const hasKey = await window.aistudio.hasSelectedApiKey();
+           const hasKey = await window.aistudio.hasSelectedApiKey().catch(() => false);
            if (!hasKey) {
               // @ts-ignore
               await window.aistudio.openSelectKey();
+              apiKey = process.env.API_KEY;
            }
       }
 
-      let apiKey = process.env.API_KEY;
       if (!apiKey) {
+           // Force open if still missing
            // @ts-ignore
-           if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
-                // @ts-ignore
-                await window.aistudio.openSelectKey();
-                apiKey = process.env.API_KEY;
-           }
+           if (window.aistudio?.openSelectKey) await window.aistudio.openSelectKey();
+           apiKey = process.env.API_KEY;
       }
 
       if (!apiKey) {
-          throw new Error("API Key not found in environment.");
+          alert("API Key Required for Live Audio Mode. Please select a key.");
+          setIsConnecting(false);
+          return;
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -225,13 +227,13 @@ export const LiveAudioBot: React.FC<LiveAudioBotProps> = ({
         }
       });
 
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
       setIsConnecting(false);
-      // @ts-ignore
-      if (e.message && e.message.includes("Requested entity was not found")) {
+      // Catch specific errors to trigger key selector again
+      if (e.message?.includes("Requested entity was not found") || e.message?.includes("API Key")) {
            // @ts-ignore
-           if (window.aistudio && window.aistudio.openSelectKey) {
+           if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
                 // @ts-ignore
                 await window.aistudio.openSelectKey();
            }

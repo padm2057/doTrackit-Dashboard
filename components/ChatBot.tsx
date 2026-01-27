@@ -10,6 +10,7 @@ interface ChatBotProps {
 interface Message {
   role: 'user' | 'model';
   text: string;
+  isError?: boolean;
 }
 
 export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks }) => {
@@ -33,41 +34,49 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
 
   useEffect(scrollToBottom, [messages, isOpen, isLoading]);
 
+  const triggerKeySelection = async () => {
+      try {
+          // @ts-ignore
+          if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
+                // @ts-ignore
+                await window.aistudio.openSelectKey();
+                return true;
+          }
+      } catch (e) {
+          console.error("Key selection failed", e);
+      }
+      return false;
+  };
+
   const initializeChat = async () => {
     try {
-        // Handle API Key Selection (Crucial for Incognito/Fresh Sessions)
+        let apiKey = process.env.API_KEY;
+
+        // Active check for AI Studio environment
         // @ts-ignore
         if (typeof window !== 'undefined' && window.aistudio) {
              // @ts-ignore
-             const hasKey = await window.aistudio.hasSelectedApiKey();
+             const hasKey = await window.aistudio.hasSelectedApiKey().catch(() => false);
              if (!hasKey) {
-                // @ts-ignore
-                await window.aistudio.openSelectKey();
+                await triggerKeySelection();
+                // Refresh env var read
+                apiKey = process.env.API_KEY;
              }
         }
 
-        let apiKey = process.env.API_KEY;
-        
-        // If apiKey is still missing, force open the selector again
+        // If still no key, try one force prompt then fail gracefully
         if (!apiKey) {
-             // @ts-ignore
-             if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
-                  // @ts-ignore
-                  await window.aistudio.openSelectKey();
-                  // Re-read env var after selection
-                  apiKey = process.env.API_KEY;
-             }
+             await triggerKeySelection();
+             apiKey = process.env.API_KEY;
         }
 
         if (!apiKey) {
-            // Last ditch attempt: if we are in an environment where process.env isn't updating,
-            // we throw, but catch it to show a helpful message.
-            throw new Error("API Key not found in environment. Please ensure you selected a key.");
+            throw new Error("KEY_MISSING");
         }
 
         const ai = new GoogleGenAI({ apiKey });
         
-        // Prepare context summary using the latest processedTasks for accuracy at init time
+        // Prepare context summary
         const scheduleContext = processedTasks.map(t => ({
             id: t.id,
             name: t.task_name,
@@ -84,7 +93,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
             schedule: scheduleContext
         });
 
-        // Using gemini-3-flash-preview for faster, more reliable chat interactions
+        // Using gemini-3-flash-preview
         chatSession.current = ai.chats.create({
             model: 'gemini-3-flash-preview',
             config: {
@@ -97,7 +106,7 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
                 Guidelines:
                 1. Answer questions about dates, dependencies, and risks based on the Schedule provided.
                 2. Be concise, direct, and encouraging but realistic ("tough love").
-                3. If the user asks to change the plan, guide them to use the Edit Data button, as you cannot modify the plan directly yet.
+                3. If the user asks to change the plan, guide them to use the Edit Data button.
                 `
             }
         });
@@ -105,15 +114,12 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
         
     } catch (error: any) {
         console.error("Failed to init AI chat", error);
-        if (error.message && (error.message.includes("Requested entity was not found") || error.message.includes("API Key not found"))) {
-            // @ts-ignore
-             if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
-                 // @ts-ignore
-                 await window.aistudio.openSelectKey();
-             }
-             setMessages(prev => [...prev, { role: 'model', text: "Please select an API Key to continue." }]);
+        if (error.message === "KEY_MISSING" || error.message?.includes("API Key") || error.message?.includes("Requested entity was not found")) {
+             setMessages(prev => [...prev, { role: 'model', text: "I need an API Key to continue. Please select one using the AI Studio button.", isError: true }]);
+             // Attempt to open selector one last time
+             triggerKeySelection();
         } else {
-             setMessages(prev => [...prev, { role: 'model', text: "Connection error: " + (error.message || "Unknown") }]);
+             setMessages(prev => [...prev, { role: 'model', text: "Connection error. Please try again.", isError: true }]);
         }
         return false;
     }
@@ -142,10 +148,16 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
         const text = response.text;
         setMessages(prev => [...prev, { role: 'model', text: text || "I didn't have a response." }]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Gemini Error:", error);
-      setMessages(prev => [...prev, { role: 'model', text: "I lost the connection. Please try again." }]);
-      chatSession.current = null; // Reset on error to force re-init next time
+      // Check for session expiry or key issues during chat
+      if (error.message?.includes("API key") || error.message?.includes("403")) {
+          setMessages(prev => [...prev, { role: 'model', text: "API Key session expired. Please reconnect.", isError: true }]);
+          triggerKeySelection();
+      } else {
+          setMessages(prev => [...prev, { role: 'model', text: "I lost the connection. Please try again.", isError: true }]);
+      }
+      chatSession.current = null; 
     } finally {
       setIsLoading(false);
     }
@@ -191,11 +203,21 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
                             className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                                 msg.role === 'user' 
                                 ? 'bg-indigo-600 text-white rounded-br-sm' 
-                                : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-bl-sm shadow-sm'
+                                : msg.isError 
+                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
+                                    : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-bl-sm shadow-sm'
                             }`}
                             style={{ color: msg.role === 'user' ? '#ffffff' : '' }}
                         >
                             {msg.text}
+                            {msg.isError && (
+                                <button 
+                                    onClick={() => triggerKeySelection()}
+                                    className="block mt-2 text-xs font-bold underline cursor-pointer hover:text-red-800 dark:hover:text-red-300"
+                                >
+                                    Select API Key
+                                </button>
+                            )}
                         </div>
                     </div>
                 ))}

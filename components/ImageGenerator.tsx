@@ -21,29 +21,30 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt })
     setLoading(true);
     setError(null);
     try {
-      // Handle API Key Selection
+      let apiKey = process.env.API_KEY;
+
+      // Ensure key selection if missing
       // @ts-ignore
       if (typeof window !== 'undefined' && window.aistudio) {
            // @ts-ignore
-           const hasKey = await window.aistudio.hasSelectedApiKey();
+           const hasKey = await window.aistudio.hasSelectedApiKey().catch(() => false);
            if (!hasKey) {
               // @ts-ignore
               await window.aistudio.openSelectKey();
+              apiKey = process.env.API_KEY;
            }
       }
 
-      let apiKey = process.env.API_KEY;
       if (!apiKey) {
            // @ts-ignore
-           if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
-                // @ts-ignore
-                await window.aistudio.openSelectKey();
-                apiKey = process.env.API_KEY;
-           }
+           if (window.aistudio?.openSelectKey) await window.aistudio.openSelectKey();
+           apiKey = process.env.API_KEY;
       }
 
       if (!apiKey) {
-          throw new Error("API Key not found in environment.");
+          setError("API Key Required. Please select a key.");
+          setLoading(false);
+          return;
       }
 
       const ai = new GoogleGenAI({ apiKey });
@@ -82,7 +83,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt })
 
     } catch (err: any) {
         console.error(err);
-        if (err.message && err.message.includes("Requested entity was not found")) {
+        if (err.message?.includes("Requested entity was not found") || err.message?.includes("API Key")) {
              // @ts-ignore
              if (window.aistudio && window.aistudio.openSelectKey) {
                  // @ts-ignore
