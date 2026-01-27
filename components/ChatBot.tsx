@@ -41,6 +41,8 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
                 // @ts-ignore
                 await window.aistudio.openSelectKey();
                 return true;
+          } else {
+             alert("API Key Manager not detected. Please run in a compatible environment or project editor.");
           }
       } catch (e) {
           console.error("Key selection failed", e);
