@@ -70,6 +70,9 @@ const App: React.FC = () => {
   // LIVE TIMER
   const [now, setNow] = useState(new Date());
 
+  // MOBILE PREVIEW STATE
+  const [isMobilePreview, setIsMobilePreview] = useState(false);
+
   // Refs to prevent duplicate auto-saves within the same minute
   const lastSystemSaveDate = useRef<string>('');
   
@@ -739,6 +742,17 @@ const App: React.FC = () => {
                 )}
             </button>
 
+            {/* Mobile Preview Toggle */}
+            <button
+                onClick={() => setIsMobilePreview(!isMobilePreview)}
+                className={`p-1.5 rounded-full transition-colors mr-1 ${isMobilePreview ? 'text-indigo-400 bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+                title={isMobilePreview ? "Exit Mobile Preview" : "Mobile Preview"}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                </svg>
+            </button>
+
              {/* Lock Goal Button */}
              <button 
                 onClick={() => setIsLocked(!isLocked)}
@@ -837,7 +851,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 print:py-4">
+      <main className={`mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 print:py-4 transition-all duration-300 ${isMobilePreview ? 'max-w-[390px] border-x border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950 min-h-screen' : 'max-w-7xl'}`}>
         
         {/* PDF Header - Only visible during export */}
         <div className="pdf-header">
@@ -879,10 +893,10 @@ const App: React.FC = () => {
             
             {/* Bottom: Stats Panel */}
             <div className="w-full bg-slate-50 dark:bg-slate-800/50 px-6 py-5 rounded-xl border border-slate-100 dark:border-slate-800 print:bg-transparent print:border print:border-slate-300 print:px-6">
-                <div className="flex flex-col sm:flex-row items-start gap-8">
+                <div className={`flex flex-col ${!isMobilePreview ? 'sm:flex-row' : ''} items-start gap-8`}>
                     
                     {/* Metrics Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-4 w-full">
+                    <div className={`grid grid-cols-2 ${!isMobilePreview ? 'sm:grid-cols-4' : ''} gap-x-8 gap-y-4 w-full`}>
                         {/* Effort */}
                         <div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-0.5">Total Effort</div>
@@ -963,7 +977,7 @@ const App: React.FC = () => {
         {/* Visualizer Image Generator */}
         <ImageGenerator initialPrompt={projectData.smart_goal} />
 
-        <div className="pdf-charts-grid grid grid-cols-1 lg:grid-cols-3 gap-6 print:block print:space-y-8">
+        <div className={`pdf-charts-grid grid grid-cols-1 ${!isMobilePreview ? 'lg:grid-cols-3' : ''} gap-6 print:block print:space-y-8`}>
             <div className="break-inside-avoid">
                 <CapacitySimulatorChart 
                     tasks={projectData.tasks} 
@@ -1017,6 +1031,7 @@ const App: React.FC = () => {
             taskNotes={projectData.task_notes}
             onDateClick={handleDateClick}
             onTaskClick={handleTaskClick}
+            forceMobile={isMobilePreview}
           />
         </section>
 

@@ -22,6 +22,7 @@ interface GanttChartProps {
   taskNotes?: TaskNote[];
   onDateClick?: (date: Date) => void;
   onTaskClick?: (task: ProcessedTask) => void;
+  forceMobile?: boolean;
 }
 
 export const GanttChart: React.FC<GanttChartProps> = ({ 
@@ -43,7 +44,8 @@ export const GanttChart: React.FC<GanttChartProps> = ({
   calendarNotes = [],
   taskNotes = [],
   onDateClick,
-  onTaskClick
+  onTaskClick,
+  forceMobile = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -58,7 +60,7 @@ export const GanttChart: React.FC<GanttChartProps> = ({
   } | null>(null);
 
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 640);
+    const checkMobile = () => setIsMobile(window.innerWidth < 640 || forceMobile);
     if (typeof window !== 'undefined') {
         checkMobile();
         window.addEventListener('resize', checkMobile);
@@ -66,7 +68,7 @@ export const GanttChart: React.FC<GanttChartProps> = ({
     return () => {
         if (typeof window !== 'undefined') window.removeEventListener('resize', checkMobile);
     }
-  }, []);
+  }, [forceMobile]);
   
   // Metrics
   const DAY_WIDTH = isPdfExport ? 25 : (isMobile ? 40 : 60);
