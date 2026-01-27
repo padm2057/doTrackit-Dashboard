@@ -702,6 +702,25 @@ const App: React.FC = () => {
                 <span className="hidden md:inline">Cloud Sync</span>
              </button>
 
+             {/* API Key Button */}
+             <button 
+                onClick={async () => {
+                    // @ts-ignore
+                    if (window.aistudio && window.aistudio.openSelectKey) {
+                        // @ts-ignore
+                        await window.aistudio.openSelectKey();
+                    } else {
+                        alert("API Key manager not detected in this environment.");
+                    }
+                }}
+                className="text-slate-400 hover:text-amber-400 p-1.5 rounded-full hover:bg-slate-800 transition-colors"
+                title="Manage Gemini API Key"
+             >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M15.75 1.5a6.75 6.75 0 00-6.651 7.906c.067.39-.032.717-.221.906l-6.5 6.499a3 3 0 00-.878 2.121v2.818c0 .414.336.75.75.75h2.818a3 3 0 002.122-.878l6.499-6.5c.189-.189.517-.288.906-.22a6.75 6.75 0 101.155-12.451zM15.75 3a4.5 4.5 0 110 9 4.5 4.5 0 010-9zm-6.562 10.962l-4.638 4.638c-.375.375-.588.884-.588 1.415v1.485h1.485c.531 0 1.04-.213 1.415-.588l4.638-4.638a9.016 9.016 0 00-2.312-2.312z" clipRule="evenodd" />
+                </svg>
+             </button>
+
              {/* Theme Toggle */}
              <button 
                 onClick={toggleTheme}
