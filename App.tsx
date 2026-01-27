@@ -13,6 +13,7 @@ import { LiveAudioBot } from './components/LiveAudioBot';
 import { CloudSyncModal } from './components/CloudSyncModal';
 import { DateNoteModal } from './components/DateNoteModal';
 import { TaskNoteModal } from './components/TaskNoteModal';
+import { FeedbackModal } from './components/FeedbackModal';
 import { calculateProjectSchedule, calculateDailyWorkload } from './utils/scheduler';
 import { analyzeProjectPlan } from './utils/insightEngine'; 
 import { getSupabase, hasSupabaseConfig } from './utils/supabaseClient';
@@ -49,6 +50,14 @@ const App: React.FC = () => {
   // Note Modal State (Task)
   const [isTaskNoteModalOpen, setIsTaskNoteModalOpen] = useState(false);
   const [selectedTaskForNote, setSelectedTaskForNote] = useState<ProcessedTask | null>(null);
+
+  // Feedback Modal State
+  const [feedback, setFeedback] = useState<{isOpen: boolean, title: string, message: string, type: 'error' | 'info' | 'success'}>({
+      isOpen: false,
+      title: '',
+      message: '',
+      type: 'info'
+  });
 
   const [weekdayHours, setWeekdayHours] = useState<number>(() => loadState('dt_config_weekday', 6));
   const [weekendHours, setWeekendHours] = useState<number>(() => loadState('dt_config_weekend', 2));
@@ -708,12 +717,28 @@ const App: React.FC = () => {
              {/* API Key Button - Prominently Displayed */}
              <button 
                 onClick={async () => {
+                    // Check for key manager in window
                     // @ts-ignore
                     if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
                         // @ts-ignore
                         await window.aistudio.openSelectKey();
                     } else {
-                        alert("API Key Manager not detected. This feature requires the app to be run in a supported environment (like Google AI Studio/Project IDX) to manage keys securely.");
+                        // Logic for when Manager is missing
+                        if (process.env.API_KEY) {
+                            setFeedback({
+                                isOpen: true,
+                                title: "API Key Active",
+                                message: "Your API Key is currently managed via environment variables. The dynamic key selector is only available in the AI Studio development environment.",
+                                type: 'success'
+                            });
+                        } else {
+                            setFeedback({
+                                isOpen: true,
+                                title: "Key Manager Not Detected",
+                                message: "This feature requires the app to be run in a supported environment (like Google AI Studio/Project IDX) to manage keys securely. In production, please configure the API_KEY environment variable.",
+                                type: 'error'
+                            });
+                        }
                     }
                 }}
                 className="flex items-center gap-2 px-2 md:px-3 py-1.5 rounded text-sm font-bold bg-slate-800 hover:bg-slate-700 text-amber-400 border border-slate-700 transition-colors"
@@ -1058,6 +1083,13 @@ const App: React.FC = () => {
         task={selectedTaskForNote}
         existingNotes={currentTaskNotes}
         onSave={handleSaveTaskNote}
+      />
+      <FeedbackModal 
+        isOpen={feedback.isOpen} 
+        onClose={() => setFeedback(prev => ({...prev, isOpen: false}))}
+        title={feedback.title}
+        message={feedback.message}
+        type={feedback.type}
       />
       <ChatBot projectPlan={projectData} processedTasks={processedTasks} />
       <LiveAudioBot 
