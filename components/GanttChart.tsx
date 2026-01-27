@@ -72,7 +72,12 @@ export const GanttChart: React.FC<GanttChartProps> = ({
   const DAY_WIDTH = isPdfExport ? 25 : (isMobile ? 40 : 60);
   const HEADER_HEIGHT = 54;
   const ROW_HEIGHT = 52; 
-  const SIDEBAR_WIDTH = isPdfExport ? 140 : (isMobile ? 50 : 200); 
+  
+  // Column Widths
+  const NAME_COL_WIDTH = isPdfExport ? 140 : (isMobile ? 50 : 220); 
+  const NOTES_COL_WIDTH = isPdfExport ? 30 : (isMobile ? 35 : 80); // Increased from 60 to 80
+  const SIDEBAR_WIDTH = NAME_COL_WIDTH + NOTES_COL_WIDTH;
+  
   const VISUAL_SHIFT_DAYS = 1;
   
   const getEndDay = (taskList?: ProcessedTask[]) => 
@@ -173,11 +178,21 @@ export const GanttChart: React.FC<GanttChartProps> = ({
 
       <div className="gantt-scroll-area overflow-x-auto" ref={containerRef}>
         <div className="flex relative" style={{ width: totalWidth, height: (tasks.length * ROW_HEIGHT) + HEADER_HEIGHT + 20 }}>
-            {/* Left Column: Task Names */}
+            {/* Left Column: Task Names & Notes */}
             <div style={{ width: SIDEBAR_WIDTH }} className="sticky left-0 flex-shrink-0 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 z-30 shadow-[4px_0_12px_-4px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_12px_-4px_rgba(0,0,0,0.3)] transition-all duration-300">
-                <div style={{ height: HEADER_HEIGHT }} className={`sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 p-2 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center ${isMobile ? 'justify-center' : ''}`}>
-                    {isMobile ? '#' : 'Task Name'}
+                {/* Sidebar Header */}
+                <div style={{ height: HEADER_HEIGHT }} className={`sticky top-0 z-40 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 font-bold text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center`}>
+                    <div style={{ width: NAME_COL_WIDTH }} className={`h-full flex items-center px-3 ${isMobile ? 'justify-center' : ''}`}>
+                        {isMobile ? '#' : 'Task Name'}
+                    </div>
+                    <div style={{ width: NOTES_COL_WIDTH }} className="h-full flex items-center justify-center border-l border-slate-100 dark:border-slate-700">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5 text-slate-400">
+                             <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z" clipRule="evenodd" />
+                             <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" />
+                        </svg>
+                    </div>
                 </div>
+
                 {tasks.map((task) => {
                     const words = task.task_name.split(' ');
                     const shortName = words.slice(0, 3).join(' ') + (words.length > 3 ? '...' : '');
@@ -190,25 +205,41 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                     const hasNotes = taskNotes.some(n => n.taskId === task.id);
 
                     return (
-                        <div key={task.id} style={{ height: ROW_HEIGHT }} className={`border-b border-slate-100 dark:border-slate-800 px-3 flex items-center text-xs font-medium text-slate-700 dark:text-slate-300 ${isMobile ? 'justify-center' : ''}`} title={task.task_name}>
-                            <div className="flex items-center w-full min-w-0">
-                                <div onClick={() => !isDependencyLocked && onTaskToggle && onTaskToggle(task.id)} className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] font-bold transition-all duration-200 flex-shrink-0 mr-2 z-10 relative ${task.isCompleted ? 'bg-black dark:bg-slate-200 text-white dark:text-slate-900 border-black dark:border-slate-200 ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : isDependencyLocked ? 'bg-slate-100 text-slate-300 border-slate-200 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700 cursor-not-allowed' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-600 hover:border-indigo-500 hover:text-indigo-600 cursor-pointer'} ${isExecutionMode && !task.isCompleted && !isDependencyLocked ? 'animate-pulse ring-1 ring-indigo-500/50' : ''}`}>
-                                    {task.isCompleted ? '✓' : task.id}
+                        <div key={task.id} style={{ height: ROW_HEIGHT }} className="border-b border-slate-100 dark:border-slate-800 flex items-center text-xs font-medium text-slate-700 dark:text-slate-300">
+                            {/* Name Column */}
+                            <div style={{ width: NAME_COL_WIDTH }} className={`h-full flex items-center px-3 ${isMobile ? 'justify-center' : ''}`} title={task.task_name}>
+                                <div className="flex items-center w-full min-w-0">
+                                    <div onClick={() => !isDependencyLocked && onTaskToggle && onTaskToggle(task.id)} className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] font-bold transition-all duration-200 flex-shrink-0 mr-2 z-10 relative ${task.isCompleted ? 'bg-black dark:bg-slate-200 text-white dark:text-slate-900 border-black dark:border-slate-200 ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : isDependencyLocked ? 'bg-slate-100 text-slate-300 border-slate-200 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700 cursor-not-allowed' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-600 hover:border-indigo-500 hover:text-indigo-600 cursor-pointer'} ${isExecutionMode && !task.isCompleted && !isDependencyLocked ? 'animate-pulse ring-1 ring-indigo-500/50' : ''}`}>
+                                        {task.isCompleted ? '✓' : task.id}
+                                    </div>
+                                    {!isMobile && (
+                                        <span 
+                                            className={`truncate transition-all ${task.isCompleted ? 'text-slate-400 line-through' : (isDependencyLocked ? 'text-slate-400 dark:text-slate-600' : textOpacityClass)}`}
+                                        >
+                                            {shortName}
+                                        </span>
+                                    )}
                                 </div>
-                                {!isMobile && (
-                                    <span 
-                                        onClick={() => onTaskClick && onTaskClick(task)}
-                                        className={`truncate transition-all hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer flex items-center gap-1.5 group/text ${task.isCompleted ? 'text-slate-400 line-through' : (isDependencyLocked ? 'text-slate-400 dark:text-slate-600' : textOpacityClass)}`}
-                                        title="Click to view/add notes"
-                                    >
-                                        {shortName}
-                                        {hasNotes && <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0" />}
-                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 opacity-0 group-hover/text:opacity-100 text-slate-400 transition-opacity">
-                                            <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
-                                            <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
-                                        </svg>
-                                    </span>
-                                )}
+                            </div>
+                            
+                            {/* Notes Column */}
+                            <div style={{ width: NOTES_COL_WIDTH }} className="h-full flex items-center justify-center border-l border-slate-100 dark:border-slate-700">
+                                <button 
+                                    onClick={() => onTaskClick && onTaskClick(task)}
+                                    className={`p-2 rounded-xl transition-all relative group/note ${hasNotes ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20 shadow-sm' : 'text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/10'}`}
+                                    title={hasNotes ? "View notes" : "Add note"}
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6">
+                                        <path fillRule="evenodd" d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0016.5 9h-1.875a1.875 1.875 0 01-1.875-1.875V5.25A3.75 3.75 0 009 1.5H5.625zM7.5 15a.75.75 0 01.75-.75h7.5a.75.75 0 010 1.5h-7.5A.75.75 0 017.5 15zm.75 2.25a.75.75 0 000 1.5H12a.75.75 0 000-1.5H8.25z" clipRule="evenodd" />
+                                        <path d="M12.971 1.816A5.23 5.23 0 0114.25 5.25v1.875c0 .207.168.375.375.375H16.5a5.23 5.23 0 013.434 1.279 9.768 9.768 0 00-6.963-6.963z" />
+                                    </svg>
+                                    {hasNotes && (
+                                        <span className="absolute top-1 right-1 flex h-2.5 w-2.5">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-indigo-500 border border-white dark:border-slate-900"></span>
+                                        </span>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     );

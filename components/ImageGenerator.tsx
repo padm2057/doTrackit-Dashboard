@@ -21,17 +21,32 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt })
     setLoading(true);
     setError(null);
     try {
+      // Handle API Key Selection
       // @ts-ignore
-      if (window.aistudio && window.aistudio.hasSelectedApiKey) {
-         // @ts-ignore
-         const hasKey = await window.aistudio.hasSelectedApiKey();
-         if (!hasKey) {
-            // @ts-ignore
-            await window.aistudio.openSelectKey();
-         }
+      if (typeof window !== 'undefined' && window.aistudio) {
+           // @ts-ignore
+           const hasKey = await window.aistudio.hasSelectedApiKey();
+           if (!hasKey) {
+              // @ts-ignore
+              await window.aistudio.openSelectKey();
+           }
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      let apiKey = process.env.API_KEY;
+      if (!apiKey) {
+           // @ts-ignore
+           if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
+                // @ts-ignore
+                await window.aistudio.openSelectKey();
+                apiKey = process.env.API_KEY;
+           }
+      }
+
+      if (!apiKey) {
+          throw new Error("API Key not found in environment.");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-3-pro-image-preview',
         contents: {

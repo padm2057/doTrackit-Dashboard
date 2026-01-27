@@ -23,7 +23,6 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
   const chatSession = useRef<Chat | null>(null);
 
   // Invalidate chat session ONLY when structural project data changes.
-  // We avoid 'processedTasks' dependency because it updates every minute (time tick), which would reset the chat constantly.
   useEffect(() => {
      chatSession.current = null;
   }, [projectPlan.smart_goal, projectPlan.tasks.length, projectPlan.id]);
@@ -36,8 +35,9 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
 
   const initializeChat = async () => {
     try {
+        // Handle API Key Selection (Crucial for Incognito/Fresh Sessions)
         // @ts-ignore
-        if (window.aistudio && window.aistudio.hasSelectedApiKey) {
+        if (typeof window !== 'undefined' && window.aistudio) {
              // @ts-ignore
              const hasKey = await window.aistudio.hasSelectedApiKey();
              if (!hasKey) {
@@ -46,7 +46,19 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
              }
         }
 
-        const apiKey = process.env.API_KEY;
+        let apiKey = process.env.API_KEY;
+        
+        // If apiKey is still missing, force open the selector again
+        if (!apiKey) {
+             // @ts-ignore
+             if (typeof window !== 'undefined' && window.aistudio && window.aistudio.openSelectKey) {
+                  // @ts-ignore
+                  await window.aistudio.openSelectKey();
+                  // Re-read env var after selection
+                  apiKey = process.env.API_KEY;
+             }
+        }
+
         if (!apiKey) {
             throw new Error("API Key not found in environment.");
         }
