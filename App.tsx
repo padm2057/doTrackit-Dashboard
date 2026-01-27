@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { ProjectPlan, DailyLog, Task } from './types';
+import { ProjectPlan, DailyLog, Task, CalendarNote } from './types';
 import { DEFAULT_PROJECT_PLAN } from './constants';
 import { ProjectTable } from './components/ProjectTable';
 import { ProjectChart } from './components/ProjectChart';
@@ -11,6 +11,7 @@ import { InsightPanel } from './components/InsightPanel';
 import { ChatBot } from './components/ChatBot';
 import { LiveAudioBot } from './components/LiveAudioBot';
 import { CloudSyncModal } from './components/CloudSyncModal';
+import { DateNoteModal } from './components/DateNoteModal';
 import { calculateProjectSchedule, calculateDailyWorkload } from './utils/scheduler';
 import { analyzeProjectPlan } from './utils/insightEngine'; 
 import { getSupabase, hasSupabaseConfig } from './utils/supabaseClient';
@@ -40,6 +41,10 @@ const App: React.FC = () => {
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   
+  // Note Modal State
+  const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
+  const [selectedNoteDate, setSelectedNoteDate] = useState<Date | null>(null);
+
   const [weekdayHours, setWeekdayHours] = useState<number>(() => loadState('dt_config_weekday', 6));
   const [weekendHours, setWeekendHours] = useState<number>(() => loadState('dt_config_weekend', 2));
   
@@ -468,6 +473,49 @@ const App: React.FC = () => {
           })
       }));
   };
+  
+  const handleRevertForcedTask = (taskId: string) => {
+      setProjectData(prev => ({
+          ...prev,
+          tasks: prev.tasks.map(t => {
+              if (t.id === taskId) {
+                  return { ...t, forcedDate: undefined };
+              }
+              return t;
+          })
+      }));
+  };
+
+  // --- CALENDAR NOTES HANDLERS ---
+  const handleDateClick = (date: Date) => {
+      setSelectedNoteDate(date);
+      setIsNoteModalOpen(true);
+  };
+
+  const handleSaveNote = (content: string) => {
+      if (!selectedNoteDate) return;
+
+      const dateKey = getInputValue(selectedNoteDate);
+      const newNote: CalendarNote = {
+          id: crypto.randomUUID(),
+          date: dateKey,
+          content: content,
+          timestamp: new Date().toISOString()
+      };
+
+      setProjectData(prev => ({
+          ...prev,
+          calendar_notes: [...(prev.calendar_notes || []), newNote]
+      }));
+  };
+  
+  // Filter notes for the currently selected date in modal
+  const currentModalNotes = useMemo(() => {
+      if (!selectedNoteDate || !projectData.calendar_notes) return [];
+      const dateKey = getInputValue(selectedNoteDate);
+      return projectData.calendar_notes.filter(n => n.date === dateKey);
+  }, [selectedNoteDate, projectData.calendar_notes]);
+
 
   const dailyWorkload = useMemo(() => {
     return calculateDailyWorkload(processedTasks, weekdayHours, weekendHours);
@@ -853,6 +901,7 @@ const App: React.FC = () => {
                 tasks={processedTasks} 
                 onTaskToggle={handleTaskToggle} 
                 onForceTask={handleForceTaskToToday}
+                onRevertForceTask={handleRevertForcedTask}
             />
         </div>
 
@@ -912,6 +961,8 @@ const App: React.FC = () => {
             currentDate={now}
             onTaskToggle={handleTaskToggle}
             isExecutionMode={isLocked}
+            calendarNotes={projectData.calendar_notes}
+            onDateClick={handleDateClick}
           />
         </section>
 
@@ -923,6 +974,13 @@ const App: React.FC = () => {
         onClose={() => setIsCloudModalOpen(false)} 
         projectData={projectData}
         onLoadProject={(data) => setProjectData(data)}
+      />
+      <DateNoteModal 
+        isOpen={isNoteModalOpen}
+        onClose={() => setIsNoteModalOpen(false)}
+        date={selectedNoteDate}
+        existingNotes={currentModalNotes}
+        onSave={handleSaveNote}
       />
       <ChatBot projectPlan={projectData} processedTasks={processedTasks} />
       <LiveAudioBot 

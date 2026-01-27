@@ -28,6 +28,13 @@ export interface DailyLog {
   timestamp: string; // ISO string of when the snapshot was actually taken
 }
 
+export interface CalendarNote {
+  id: string;
+  date: string; // YYYY-MM-DD the note is attached to
+  content: string;
+  timestamp: string; // ISO string of when the note was created
+}
+
 export interface ProjectPlan {
   id?: string; // Database ID (UUID)
   smart_goal: string;
@@ -35,4 +42,5 @@ export interface ProjectPlan {
   project_start_date?: string; // ISO Date string YYYY-MM-DD
   tasks: Task[];
   daily_logs?: DailyLog[];
+  calendar_notes?: CalendarNote[];
 }

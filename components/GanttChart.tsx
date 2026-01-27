@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ProcessedTask } from '../types';
+import { ProcessedTask, CalendarNote } from '../types';
 
 interface GanttChartProps {
   tasks: ProcessedTask[];
@@ -18,6 +18,8 @@ interface GanttChartProps {
   currentDate?: Date;
   onTaskToggle?: (taskId: string) => void;
   isExecutionMode?: boolean;
+  calendarNotes?: CalendarNote[];
+  onDateClick?: (date: Date) => void;
 }
 
 export const GanttChart: React.FC<GanttChartProps> = ({ 
@@ -35,7 +37,9 @@ export const GanttChart: React.FC<GanttChartProps> = ({
   projectStartDate,
   currentDate,
   onTaskToggle,
-  isExecutionMode = false
+  isExecutionMode = false,
+  calendarNotes = [],
+  onDateClick
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -99,6 +103,11 @@ export const GanttChart: React.FC<GanttChartProps> = ({
       isWeekend: d.getDay() === 0 || d.getDay() === 6
     };
   };
+  
+  // Helper to format date for comparison
+  const toDateKey = (d: Date) => {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
 
   // Helper to calc offset from distribution key
   const getDayOffset = (dateStr: string) => {
@@ -193,13 +202,27 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                 {/* Timeline Header */}
                 <div className="flex sticky top-0 left-0 right-0 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 z-20" style={{ height: HEADER_HEIGHT }}>
                     {Array.from({ length: Math.ceil(totalDays) }).map((_, i) => {
-                        const { day, month, weekday, isWeekend } = getDateLabel(i);
+                        const { day, month, weekday, isWeekend, dateObj } = getDateLabel(i);
                         const isZeroWorkWeekend = isWeekend && weekendHours === 0;
+                        const dateKey = toDateKey(dateObj);
+                        const hasNote = calendarNotes.some(n => n.date === dateKey);
+
                         return (
-                            <div key={i} style={{ width: DAY_WIDTH }} className={`flex-shrink-0 flex flex-col items-center justify-center text-[10px] border-r border-slate-200 dark:border-slate-800 leading-tight ${isZeroWorkWeekend ? 'bg-slate-200 dark:bg-slate-950 text-slate-400 dark:text-slate-600' : isWeekend ? 'bg-slate-100 dark:bg-slate-900' : ''}`}>
+                            <div 
+                                key={i} 
+                                style={{ width: DAY_WIDTH }} 
+                                onClick={() => onDateClick && onDateClick(dateObj)}
+                                className={`flex-shrink-0 flex flex-col items-center justify-center text-[10px] border-r border-slate-200 dark:border-slate-800 leading-tight cursor-pointer hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors relative group
+                                    ${isZeroWorkWeekend ? 'bg-slate-200 dark:bg-slate-950 text-slate-400 dark:text-slate-600' : isWeekend ? 'bg-slate-100 dark:bg-slate-900' : ''}`}
+                                title="Click to add note"
+                            >
                                 <span className="text-[9px] uppercase font-bold text-slate-500 dark:text-slate-400">{weekday}</span>
-                                <span className="font-bold text-slate-800 dark:text-slate-200 text-xs">{day}</span>
+                                <span className={`font-bold text-xs ${hasNote ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-800 dark:text-slate-200'}`}>{day}</span>
                                 <span className="text-[9px] text-slate-400 dark:text-slate-500">{month}</span>
+                                
+                                {hasNote && (
+                                    <div className="absolute bottom-1 w-1.5 h-1.5 bg-indigo-500 rounded-full shadow-sm"></div>
+                                )}
                             </div>
                         );
                     })}

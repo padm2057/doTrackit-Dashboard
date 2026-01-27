@@ -5,9 +5,10 @@ interface ProjectTableProps {
   tasks: ProcessedTask[];
   onTaskToggle?: (taskId: string) => void;
   onForceTask?: (taskId: string) => void;
+  onRevertForceTask?: (taskId: string) => void;
 }
 
-export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle, onForceTask }) => {
+export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle, onForceTask, onRevertForceTask }) => {
   const [isOpen, setIsOpen] = useState(false);
   const totalHours = tasks.reduce((sum, t) => sum + t.duration_hours, 0);
 
@@ -101,9 +102,9 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
                     return p && !p.isCompleted;
                 });
                 
+                const isPending = !task.isCompleted;
+                const isForced = !!task.forcedDate;
                 const isNextTask = task.id === firstPendingId;
-                // Allow action if it's the Next Task (Pending) OR if it is Completed (to re-anchor to today)
-                const showActionButton = (isNextTask && !task.isCompleted && !task.forcedDate) || (task.isCompleted);
 
                 return (
                     <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -150,16 +151,40 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
                         )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap align-top">
-                         {showActionButton && onForceTask && (
+                         {isPending && isForced && onRevertForceTask && (
+                             <button
+                                onClick={() => onRevertForceTask(task.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded text-xs font-bold uppercase tracking-wider hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                                title="Remove forced date constraint"
+                             >
+                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                    <path fillRule="evenodd" d="M2.5 10a7.5 7.5 0 1110.963 6.633.75.75 0 00-1.096-.92 6 6 0 10-8.73-4.526l.894.894a.75.75 0 001.06-1.06l-2.25-2.25a.75.75 0 00-1.06 0l-2.25 2.25a.75.75 0 001.06 1.06l.894-.894z" clipRule="evenodd" />
+                                 </svg>
+                                 Unforce
+                             </button>
+                         )}
+                         {isPending && !isForced && isNextTask && onForceTask && (
                              <button
                                 onClick={() => onForceTask(task.id)}
                                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/30 rounded text-xs font-bold uppercase tracking-wider hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors shadow-sm"
-                                title="Force start this task today (or mark done today), ignoring capacity."
+                                title="Force start this task today, ignoring capacity."
                              >
                                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
                                  </svg>
-                                 {task.isCompleted ? 'Redo Today' : 'Do Today'}
+                                 Do Today
+                             </button>
+                         )}
+                         {task.isCompleted && onForceTask && (
+                             <button
+                                onClick={() => onForceTask(task.id)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-900/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-900/30 rounded text-xs font-bold uppercase tracking-wider hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors shadow-sm"
+                                title="Update completion date to now."
+                             >
+                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z" clipRule="evenodd" />
+                                 </svg>
+                                 Redo Today
                              </button>
                          )}
                     </td>
