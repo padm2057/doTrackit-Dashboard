@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { ProjectPlan, DailyLog, Task, CalendarNote } from './types';
+import { ProjectPlan, DailyLog, Task, CalendarNote, ProcessedTask, TaskNote } from './types';
 import { DEFAULT_PROJECT_PLAN } from './constants';
 import { ProjectTable } from './components/ProjectTable';
 import { ProjectChart } from './components/ProjectChart';
@@ -12,6 +12,7 @@ import { ChatBot } from './components/ChatBot';
 import { LiveAudioBot } from './components/LiveAudioBot';
 import { CloudSyncModal } from './components/CloudSyncModal';
 import { DateNoteModal } from './components/DateNoteModal';
+import { TaskNoteModal } from './components/TaskNoteModal';
 import { calculateProjectSchedule, calculateDailyWorkload } from './utils/scheduler';
 import { analyzeProjectPlan } from './utils/insightEngine'; 
 import { getSupabase, hasSupabaseConfig } from './utils/supabaseClient';
@@ -41,9 +42,13 @@ const App: React.FC = () => {
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   
-  // Note Modal State
+  // Note Modal State (Calendar)
   const [isNoteModalOpen, setIsNoteModalOpen] = useState(false);
   const [selectedNoteDate, setSelectedNoteDate] = useState<Date | null>(null);
+
+  // Note Modal State (Task)
+  const [isTaskNoteModalOpen, setIsTaskNoteModalOpen] = useState(false);
+  const [selectedTaskForNote, setSelectedTaskForNote] = useState<ProcessedTask | null>(null);
 
   const [weekdayHours, setWeekdayHours] = useState<number>(() => loadState('dt_config_weekday', 6));
   const [weekendHours, setWeekendHours] = useState<number>(() => loadState('dt_config_weekend', 2));
@@ -516,6 +521,33 @@ const App: React.FC = () => {
       return projectData.calendar_notes.filter(n => n.date === dateKey);
   }, [selectedNoteDate, projectData.calendar_notes]);
 
+  // --- TASK NOTES HANDLERS ---
+  const handleTaskClick = (task: ProcessedTask) => {
+      setSelectedTaskForNote(task);
+      setIsTaskNoteModalOpen(true);
+  };
+
+  const handleSaveTaskNote = (content: string) => {
+      if (!selectedTaskForNote) return;
+
+      const newNote: TaskNote = {
+          id: crypto.randomUUID(),
+          taskId: selectedTaskForNote.id,
+          content: content,
+          timestamp: new Date().toISOString()
+      };
+
+      setProjectData(prev => ({
+          ...prev,
+          task_notes: [...(prev.task_notes || []), newNote]
+      }));
+  };
+
+  const currentTaskNotes = useMemo(() => {
+      if (!selectedTaskForNote || !projectData.task_notes) return [];
+      return projectData.task_notes.filter(n => n.taskId === selectedTaskForNote.id);
+  }, [selectedTaskForNote, projectData.task_notes]);
+
 
   const dailyWorkload = useMemo(() => {
     return calculateDailyWorkload(processedTasks, weekdayHours, weekendHours);
@@ -962,7 +994,9 @@ const App: React.FC = () => {
             onTaskToggle={handleTaskToggle}
             isExecutionMode={isLocked}
             calendarNotes={projectData.calendar_notes}
+            taskNotes={projectData.task_notes}
             onDateClick={handleDateClick}
+            onTaskClick={handleTaskClick}
           />
         </section>
 
@@ -981,6 +1015,13 @@ const App: React.FC = () => {
         date={selectedNoteDate}
         existingNotes={currentModalNotes}
         onSave={handleSaveNote}
+      />
+      <TaskNoteModal 
+        isOpen={isTaskNoteModalOpen}
+        onClose={() => setIsTaskNoteModalOpen(false)}
+        task={selectedTaskForNote}
+        existingNotes={currentTaskNotes}
+        onSave={handleSaveTaskNote}
       />
       <ChatBot projectPlan={projectData} processedTasks={processedTasks} />
       <LiveAudioBot 

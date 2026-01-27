@@ -35,6 +35,13 @@ export interface CalendarNote {
   timestamp: string; // ISO string of when the note was created
 }
 
+export interface TaskNote {
+  id: string;
+  taskId: string;
+  content: string;
+  timestamp: string; // ISO string of when the note was created
+}
+
 export interface ProjectPlan {
   id?: string; // Database ID (UUID)
   smart_goal: string;
@@ -43,4 +50,5 @@ export interface ProjectPlan {
   tasks: Task[];
   daily_logs?: DailyLog[];
   calendar_notes?: CalendarNote[];
+  task_notes?: TaskNote[];
 }

@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ProcessedTask, CalendarNote } from '../types';
+import { ProcessedTask, CalendarNote, TaskNote } from '../types';
 
 interface GanttChartProps {
   tasks: ProcessedTask[];
@@ -19,7 +19,9 @@ interface GanttChartProps {
   onTaskToggle?: (taskId: string) => void;
   isExecutionMode?: boolean;
   calendarNotes?: CalendarNote[];
+  taskNotes?: TaskNote[];
   onDateClick?: (date: Date) => void;
+  onTaskClick?: (task: ProcessedTask) => void;
 }
 
 export const GanttChart: React.FC<GanttChartProps> = ({ 
@@ -39,7 +41,9 @@ export const GanttChart: React.FC<GanttChartProps> = ({
   onTaskToggle,
   isExecutionMode = false,
   calendarNotes = [],
-  onDateClick
+  taskNotes = [],
+  onDateClick,
+  onTaskClick
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -183,6 +187,7 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                     });
                     const isDependencyLocked = !task.isCompleted && hasUnfinishedPredecessors;
                     const textOpacityClass = isExecutionMode && !task.isCompleted ? 'opacity-80' : '';
+                    const hasNotes = taskNotes.some(n => n.taskId === task.id);
 
                     return (
                         <div key={task.id} style={{ height: ROW_HEIGHT }} className={`border-b border-slate-100 dark:border-slate-800 px-3 flex items-center text-xs font-medium text-slate-700 dark:text-slate-300 ${isMobile ? 'justify-center' : ''}`} title={task.task_name}>
@@ -190,7 +195,20 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                                 <div onClick={() => !isDependencyLocked && onTaskToggle && onTaskToggle(task.id)} className={`flex items-center justify-center w-6 h-6 rounded-full border text-[10px] font-bold transition-all duration-200 flex-shrink-0 mr-2 z-10 relative ${task.isCompleted ? 'bg-black dark:bg-slate-200 text-white dark:text-slate-900 border-black dark:border-slate-200 ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' : isDependencyLocked ? 'bg-slate-100 text-slate-300 border-slate-200 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700 cursor-not-allowed' : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-600 hover:border-indigo-500 hover:text-indigo-600 cursor-pointer'} ${isExecutionMode && !task.isCompleted && !isDependencyLocked ? 'animate-pulse ring-1 ring-indigo-500/50' : ''}`}>
                                     {task.isCompleted ? '✓' : task.id}
                                 </div>
-                                {!isMobile && <span className={`truncate transition-opacity ${task.isCompleted ? 'text-slate-400 line-through' : (isDependencyLocked ? 'text-slate-400 dark:text-slate-600' : textOpacityClass)}`}>{shortName}</span>}
+                                {!isMobile && (
+                                    <span 
+                                        onClick={() => onTaskClick && onTaskClick(task)}
+                                        className={`truncate transition-all hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer flex items-center gap-1.5 group/text ${task.isCompleted ? 'text-slate-400 line-through' : (isDependencyLocked ? 'text-slate-400 dark:text-slate-600' : textOpacityClass)}`}
+                                        title="Click to view/add notes"
+                                    >
+                                        {shortName}
+                                        {hasNotes && <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full flex-shrink-0" />}
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 opacity-0 group-hover/text:opacity-100 text-slate-400 transition-opacity">
+                                            <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                                            <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+                                        </svg>
+                                    </span>
+                                )}
                             </div>
                         </div>
                     );
