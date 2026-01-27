@@ -725,6 +725,18 @@ const App: React.FC = () => {
                 <span className="hidden md:inline">API Key</span>
              </button>
 
+             {/* Mobile Preview Toggle - Enhanced Visibility */}
+             <button
+                onClick={() => setIsMobilePreview(!isMobilePreview)}
+                className={`flex items-center gap-2 px-2 md:px-3 py-1.5 rounded text-sm font-bold transition-colors border ${isMobilePreview ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border-slate-700'}`}
+                title={isMobilePreview ? "Exit Mobile Preview" : "Mobile Preview"}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
+                </svg>
+                <span className="hidden md:inline">Mobile</span>
+            </button>
+
              {/* Theme Toggle */}
              <button 
                 onClick={toggleTheme}
@@ -740,17 +752,6 @@ const App: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" d="M21.752 15.002A9.718 9.718 0 0118 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 003 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 009.002-5.998z" />
                     </svg>
                 )}
-            </button>
-
-            {/* Mobile Preview Toggle */}
-            <button
-                onClick={() => setIsMobilePreview(!isMobilePreview)}
-                className={`p-1.5 rounded-full transition-colors mr-1 ${isMobilePreview ? 'text-indigo-400 bg-slate-800' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-                title={isMobilePreview ? "Exit Mobile Preview" : "Mobile Preview"}
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-                </svg>
             </button>
 
              {/* Lock Goal Button */}
