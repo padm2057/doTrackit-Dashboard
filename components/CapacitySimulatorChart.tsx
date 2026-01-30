@@ -22,6 +22,9 @@ interface CapacitySimulatorChartProps {
   onBufferChange: (val: number) => void;
   startDate?: Date;
   readOnly?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  nonWorkingDays?: string[];
 }
 
 export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({ 
@@ -32,7 +35,10 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
   bufferPercent,
   onBufferChange,
   startDate,
-  readOnly = false
+  readOnly = false,
+  onMoveUp,
+  onMoveDown,
+  nonWorkingDays = []
 }) => {
   const [isMounted, setIsMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
@@ -42,10 +48,10 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
   }, []);
 
   const data = useMemo(() => {
-    // Helper to calc duration
     const getDuration = (wkDay: number, wkEnd: number, taskList: Task[] = tasks) => {
-      // Pass the startDate to the scheduler
-      const schedule = calculateProjectSchedule(taskList, wkDay, wkEnd, startDate);
+      // Pass the startDate and nonWorkingDays to the scheduler.
+      // We also pass new Date() for currentDate to match App.tsx behavior for past start dates.
+      const schedule = calculateProjectSchedule(taskList, wkDay, wkEnd, startDate, new Date(), nonWorkingDays);
       if (schedule.length === 0) return { days: 0, date: new Date() };
       
       const start = schedule[0].startDate.getTime();
@@ -94,19 +100,21 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
         opacity: 0.8
       }
     ];
-  }, [tasks, currentWeekday, currentWeekend, bufferPercent, startDate]);
+  }, [tasks, currentWeekday, currentWeekend, bufferPercent, startDate, nonWorkingDays]);
 
   const axisColor = isDarkMode ? '#94a3b8' : '#64748b';
   const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 transition-all duration-200 h-auto flex flex-col w-full">
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 transition-all duration-200 h-auto flex flex-col w-full break-inside-avoid">
       {/* Accordion Header */}
       <div 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`px-6 py-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isOpen ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}
+        className={`px-6 py-4 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isOpen ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}
       >
-        <div>
+        <div 
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex-grow cursor-pointer"
+        >
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             Schedule Scenarios
             {readOnly && (
@@ -116,10 +124,39 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
           {!isOpen && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Compare delivery speeds.</p>}
         </div>
         
-        <div className={`text-slate-400 dark:text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-            </svg>
+        <div className="flex items-center gap-4">
+            {/* Reorder Controls */}
+            {(onMoveUp || onMoveDown) && (
+                <div className="flex flex-col gap-0.5 opacity-50 hover:opacity-100 transition-opacity">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }} 
+                        disabled={!onMoveUp}
+                        className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-500">
+                            <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+                        disabled={!onMoveDown}
+                        className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-500">
+                            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            )}
+
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                className={`text-slate-400 dark:text-slate-500 transition-transform duration-200 cursor-pointer ${isOpen ? 'rotate-180' : ''}`}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+            </div>
         </div>
       </div>
       

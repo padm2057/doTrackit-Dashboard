@@ -10,7 +10,8 @@ export const calculateProjectSchedule = (
   weekdayHours: number, 
   weekendHours: number,
   projectStartTime?: Date,
-  currentDate?: Date
+  currentDate?: Date,
+  nonWorkingDays: string[] = []
 ): ProcessedTask[] => {
   const taskMap = new Map<string, ProcessedTask>();
   const capacityLedger: DayLedger = {};
@@ -26,6 +27,12 @@ export const calculateProjectSchedule = (
   };
 
   const getDailyLimit = (d: Date): number => {
+      const key = getDateKey(d);
+      // Explicit non-working day check
+      if (nonWorkingDays.includes(key)) {
+          return 0;
+      }
+
       const day = d.getDay();
       const isWeekend = day === 0 || day === 6;
       return isWeekend ? weekendHours : weekdayHours;
@@ -118,7 +125,7 @@ export const calculateProjectSchedule = (
                   // Business Day: Take full daily limit
                   available = limit;
               } else {
-                  // Off Day (e.g. Weekend): Only allow if it is the explicit Start Date
+                  // Off Day (e.g. Weekend or Blocked): Only allow if it is the explicit Start Date
                   if (dateKey === startKey) {
                       const fallbackCap = weekdayHours > 0 ? weekdayHours : 8;
                       available = fallbackCap;
@@ -137,8 +144,6 @@ export const calculateProjectSchedule = (
               const toAlloc = Math.min(remainingDuration, available);
               
               // LOGIC UPDATE: For Completed tasks, only consume capacity on the Start Day.
-              // We treat the "Tail" (subsequent days) as visual history that shouldn't block future planning.
-              // This allows successors to be scheduled on "Tomorrow" even if the completed task spills over visually.
               if (!task.isCompleted || (task.isCompleted && dateKey === startKey)) {
                   consumeCapacity(currentCursor, toAlloc);
               }
@@ -201,7 +206,6 @@ export const calculateProjectSchedule = (
               let pEnd = pred.endDate.getTime();
               
               // LOGIC UPDATE: If predecessor is completed, push successor to the NEXT calendar day relative to completion.
-              // We use startDate (completion anchor) + 1 day, ignoring the visual tail of the completed task.
               if (pred.isCompleted) {
                   const nextDay = new Date(pred.startDate);
                   nextDay.setDate(nextDay.getDate() + 1);
@@ -249,7 +253,8 @@ export interface DailyWorkload {
 export const calculateDailyWorkload = (
   tasks: ProcessedTask[], 
   weekdayHours: number, 
-  weekendHours: number
+  weekendHours: number,
+  nonWorkingDays: string[] = []
 ): DailyWorkload[] => {
   if (tasks.length === 0) return [];
 
@@ -274,14 +279,18 @@ export const calculateDailyWorkload = (
   const workloadMap = new Map<string, DailyWorkload>();
 
   for (let d = new Date(startCursor); d <= endCursor; d.setDate(d.getDate() + 1)) {
-    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-    const limit = isWeekend ? weekendHours : weekdayHours;
-    
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     const dateKey = `${year}-${month}-${day}`;
 
+    // Check blocked status
+    const isBlocked = nonWorkingDays.includes(dateKey);
+    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+    
+    // Limit is 0 if blocked, otherwise normal
+    const limit = isBlocked ? 0 : (isWeekend ? weekendHours : weekdayHours);
+    
     workloadMap.set(dateKey, {
         date: dateKey,
         hours: 0,

@@ -16,6 +16,7 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
   "smart_goal": "Launch 'Hire an AI Boss' MVP by Jan 20, 2026, securing 5 free beta users and 1 paid user ($20/mo).",
   "total_estimated_duration_hours": 54,
   "project_start_date": todayStr,
+  "non_working_days": [],
   "daily_logs": [],
   "tasks": [
     {
@@ -24,7 +25,8 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
       "task_name": "Draft Landing Page Copy (Value Prop) & Sketch UI Wireframes",
       "duration_hours": 6,
       "predecessors": [],
-      "isCompleted": false
+      "isCompleted": false,
+      "hoursCompleted": 0
     },
     {
       "id": "2",
@@ -32,7 +34,8 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
       "task_name": "Develop Public Landing Page (HTML/CSS/React)",
       "duration_hours": 8,
       "predecessors": ["1"],
-      "isCompleted": false
+      "isCompleted": false,
+      "hoursCompleted": 0
     },
     {
       "id": "3",
@@ -40,7 +43,8 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
       "task_name": "Develop App Dashboard & User Settings Views",
       "duration_hours": 12,
       "predecessors": ["2"],
-      "isCompleted": false
+      "isCompleted": false,
+      "hoursCompleted": 0
     },
     {
       "id": "4",
@@ -48,7 +52,8 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
       "task_name": "Connect Frontend to Existing Backend API (Auth & Data)",
       "duration_hours": 8,
       "predecessors": ["3"],
-      "isCompleted": false
+      "isCompleted": false,
+      "hoursCompleted": 0
     },
     {
       "id": "5",
@@ -56,7 +61,8 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
       "task_name": "Implement Stripe Payment Gateway (Checkout & Webhooks)",
       "duration_hours": 6,
       "predecessors": ["4"],
-      "isCompleted": false
+      "isCompleted": false,
+      "hoursCompleted": 0
     },
     {
       "id": "6",
@@ -64,7 +70,8 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
       "task_name": "End-to-End Testing (User Signup -> Payment -> Core Value)",
       "duration_hours": 4,
       "predecessors": ["5"],
-      "isCompleted": false
+      "isCompleted": false,
+      "hoursCompleted": 0
     },
     {
       "id": "7",
@@ -72,7 +79,8 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
       "task_name": "Production Deploy (Hosting, DNS, SSL setup)",
       "duration_hours": 2,
       "predecessors": ["6"],
-      "isCompleted": false
+      "isCompleted": false,
+      "hoursCompleted": 0
     },
     {
       "id": "8",
@@ -80,7 +88,8 @@ export const DEFAULT_PROJECT_PLAN: ProjectPlan = {
       "task_name": "Outreach Campaign: Secure 5 Beta + 1 Paid User",
       "duration_hours": 8,
       "predecessors": ["7"],
-      "isCompleted": false
+      "isCompleted": false,
+      "hoursCompleted": 0
     }
   ]
 };

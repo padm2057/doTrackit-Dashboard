@@ -8,6 +8,7 @@ export interface Task {
   isCompleted?: boolean;
   completionDate?: string; // ISO Date string of when it was marked done (adjusted for 2am rule)
   forcedDate?: string; // ISO Date string (YYYY-MM-DD) to force start this task
+  hoursCompleted?: number; // Track partial progress
 }
 
 export interface ProcessedTask extends Task {
@@ -47,6 +48,7 @@ export interface ProjectPlan {
   smart_goal: string;
   total_estimated_duration_hours: number;
   project_start_date?: string; // ISO Date string YYYY-MM-DD
+  non_working_days?: string[]; // Array of YYYY-MM-DD strings representing blocked days
   tasks: Task[];
   daily_logs?: DailyLog[];
   calendar_notes?: CalendarNote[];

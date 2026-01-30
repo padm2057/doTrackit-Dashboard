@@ -3,9 +3,15 @@ import { GoogleGenAI } from "@google/genai";
 
 interface ImageGeneratorProps {
   initialPrompt: string;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }
 
-export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt }) => {
+export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ 
+    initialPrompt,
+    onMoveUp,
+    onMoveDown
+}) => {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [imageSize, setImageSize] = useState<'1K' | '2K' | '4K'>('1K');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -18,6 +24,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt })
   }, [initialPrompt]);
 
   const handleGenerate = async () => {
+    // ... (keep existing handleGenerate logic)
     setLoading(true);
     setError(null);
     try {
@@ -109,14 +116,16 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt })
   };
 
   return (
-    <section className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 mb-8 break-inside-avoid overflow-hidden transition-all duration-300">
+    <section className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 break-inside-avoid overflow-hidden transition-all duration-300">
       
       {/* Header / Toggle */}
       <div 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isOpen ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}
+        className={`px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isOpen ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}
       >
-        <div className="flex items-center gap-3">
+        <div 
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-3 cursor-pointer flex-grow"
+        >
              <div className="bg-indigo-100 dark:bg-indigo-900/30 p-1.5 rounded text-indigo-600 dark:text-indigo-400">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                     <path fillRule="evenodd" d="M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z" clipRule="evenodd" />
@@ -131,7 +140,35 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt })
                      Image Ready
                  </span>
              )}
-             <div className={`text-slate-400 dark:text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+             
+             {/* Reorder Controls */}
+            {(onMoveUp || onMoveDown) && (
+                <div className="flex flex-col gap-0.5 opacity-50 hover:opacity-100 transition-opacity">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }} 
+                        disabled={!onMoveUp}
+                        className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-500">
+                            <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+                        disabled={!onMoveDown}
+                        className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-500">
+                            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            )}
+
+             <div 
+                onClick={() => setIsOpen(!isOpen)}
+                className={`text-slate-400 dark:text-slate-500 transition-transform duration-200 cursor-pointer ${isOpen ? 'rotate-180' : ''}`}
+            >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                 </svg>
@@ -141,6 +178,7 @@ export const ImageGenerator: React.FC<ImageGeneratorProps> = ({ initialPrompt })
 
       {isOpen && (
         <div className="p-6 animate-fade-in">
+            {/* ... (keep existing content) */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                 <div className="text-sm text-slate-500 dark:text-slate-400">
                     Generate a concept visualization based on your project goal.

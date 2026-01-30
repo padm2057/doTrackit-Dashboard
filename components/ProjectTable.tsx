@@ -8,9 +8,20 @@ interface ProjectTableProps {
   onRevertForceTask?: (taskId: string) => void;
   onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
   isLocked?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }
 
-export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle, onForceTask, onRevertForceTask, onUpdateTask, isLocked = false }) => {
+export const ProjectTable: React.FC<ProjectTableProps> = ({ 
+    tasks, 
+    onTaskToggle, 
+    onForceTask, 
+    onRevertForceTask, 
+    onUpdateTask, 
+    isLocked = false,
+    onMoveUp,
+    onMoveDown
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const totalHours = tasks.reduce((sum, t) => sum + t.duration_hours, 0);
 
@@ -18,6 +29,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
   const firstPendingId = tasks.find(t => !t.isCompleted)?.id;
 
   const getPhaseColor = (phase: string) => {
+    // ... (keep existing logic)
     if (phase.includes('Design')) return 'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-800';
     if (phase.includes('Frontend')) return 'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-800';
     if (phase.includes('Backend') || phase.includes('Business')) return 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-800';
@@ -29,6 +41,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
   };
 
   const formatDate = (date: Date) => {
+    // ... (keep existing logic)
     return date.toLocaleString('en-US', {
       weekday: 'short',
       month: 'short',
@@ -46,11 +59,13 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
 
   return (
     <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden transition-all duration-300">
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer outline-none ${isOpen ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}
+      <div 
+        className={`w-full px-6 py-4 bg-slate-50 dark:bg-slate-800/50 flex justify-between items-center hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors ${isOpen ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}
       >
-        <div className="flex items-center gap-3">
+        <div 
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-3 cursor-pointer flex-grow"
+        >
             {/* Added a subtle list icon to replace the chevron on the left, for aesthetics */}
             <div className="text-slate-400 dark:text-slate-500">
                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
@@ -61,20 +76,50 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
         </div>
         
         <div className="flex items-center gap-4">
-            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:inline">
             {tasks.length} Tasks Defined
             </span>
-            <div className={`text-slate-500 dark:text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+            
+            {/* Reorder Controls */}
+            {(onMoveUp || onMoveDown) && (
+                <div className="flex flex-col gap-0.5 opacity-50 hover:opacity-100 transition-opacity">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }} 
+                        disabled={!onMoveUp}
+                        className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-500">
+                            <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+                        disabled={!onMoveDown}
+                        className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-500">
+                            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            )}
+
+            <div 
+                onClick={() => setIsOpen(!isOpen)}
+                className={`text-slate-500 dark:text-slate-400 transition-transform duration-200 cursor-pointer ${isOpen ? 'rotate-180' : ''}`}
+            >
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
                     <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
                 </svg>
             </div>
         </div>
-      </button>
+      </div>
 
       {isOpen && (
         <div className="overflow-x-auto">
+            {/* Table Content */}
             <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800">
+            {/* ... (keep existing table structure) */}
             <thead className="bg-slate-50 dark:bg-slate-800/50">
                 <tr>
                 <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider w-12">
@@ -116,20 +161,20 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
                         title={isLockedDependency ? "Complete predecessors first" : "Click to toggle completion"}
                     >
                          <div className={`
-                            flex items-center justify-center w-6 h-6 rounded-full border text-[10px] font-bold transition-all duration-200 cursor-pointer
+                            flex items-center justify-center w-6 h-6 rounded-md shadow-sm border text-[10px] font-bold transition-all duration-200 cursor-pointer
                             ${task.isCompleted 
-                                ? 'bg-black dark:bg-slate-200 text-white dark:text-slate-900 border-black dark:border-slate-200 ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' 
+                                ? 'bg-emerald-600 dark:bg-emerald-500 text-white border-emerald-700 dark:border-emerald-400 hover:bg-emerald-700' 
                                 : isLockedDependency
                                     ? 'bg-slate-100 text-slate-300 border-slate-200 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700 cursor-not-allowed'
-                                    : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-600 hover:border-indigo-500 hover:text-indigo-600'
+                                    : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'
                             }
                         `}>
                             {task.isCompleted ? (
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5">
-                                    <path fillRule="evenodd" d="M19.916 4.626a.75.75 0 01.208 1.04l-9 13.5a.75.75 0 01-1.154.114l-6-6a.75.75 0 011.06-1.06l5.353 5.353 8.493-12.739a.75.75 0 011.04-.208z" clipRule="evenodd" />
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
                                 </svg>
                             ) : (
-                                task.id
+                                <span className="font-mono">{task.id}</span>
                             )}
                         </div>
                     </td>

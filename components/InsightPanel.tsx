@@ -9,6 +9,8 @@ interface InsightPanelProps {
   smartGoal: string;
   onApplyOptimizations: (newTasks: Task[]) => void;
   forceExpanded?: boolean;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
 }
 
 export const InsightPanel: React.FC<InsightPanelProps> = ({ 
@@ -16,7 +18,9 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({
     tasks, 
     smartGoal, 
     onApplyOptimizations, 
-    forceExpanded = false 
+    forceExpanded = false,
+    onMoveUp,
+    onMoveDown
 }) => {
   const [aiOpinion, setAiOpinion] = useState<string | null>(null);
   const [suggestedTasks, setSuggestedTasks] = useState<Task[] | null>(null);
@@ -36,6 +40,7 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({
   };
 
   const handleDeepAnalysis = async () => {
+    // ... (keep existing handleDeepAnalysis logic)
     setLoadingAi(true);
     setAiOpinion(null);
     setSuggestedTasks(null);
@@ -101,7 +106,6 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({
             required: ["opinion", "optimized_tasks"]
         };
 
-        // Filter out heavy fields to save tokens, only send what's needed for restructuring
         const minifiedTasks = tasks.map(t => ({
             id: t.id,
             phase: t.phase,
@@ -148,17 +152,16 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({
             const result = JSON.parse(jsonText);
             setAiOpinion(result.opinion);
             if (result.optimized_tasks && Array.isArray(result.optimized_tasks)) {
-                // Merge back any fields we stripped out (like dates) if ID matches
                 const hydratedTasks = result.optimized_tasks.map((optTask: any) => {
                     const original = tasks.find(t => t.id === optTask.id);
                     if (original) {
                         return { 
-                            ...original, // Keep original dates/metadata
-                            ...optTask, // Overwrite core fields
-                            isCompleted: original.isCompleted // Trust source of truth for completion
+                            ...original,
+                            ...optTask, 
+                            isCompleted: original.isCompleted
                         };
                     }
-                    return optTask; // New task
+                    return optTask;
                 });
                 setSuggestedTasks(hydratedTasks);
             }
@@ -186,7 +189,7 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({
   const handleAcceptChanges = () => {
       if (suggestedTasks) {
           onApplyOptimizations(suggestedTasks);
-          setSuggestedTasks(null); // Clear suggestion after applying
+          setSuggestedTasks(null);
           setShowPreview(false);
           setAiOpinion(prev => (prev ? prev + " (Optimizations Applied ✓)" : "Optimizations Applied ✓"));
       }
@@ -202,10 +205,12 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({
     <div className="bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 rounded-lg shadow-sm dark:shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden transition-all duration-200">
       {/* Accordion Header */}
       <div 
-        onClick={() => setIsOpen(!isOpen)}
-        className={`p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isExpanded ? 'border-b border-slate-200 dark:border-slate-700' : ''}`}
+        className={`px-6 py-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isExpanded ? 'border-b border-slate-200 dark:border-slate-700' : ''}`}
       >
-        <div className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold">
+        <div 
+            onClick={() => setIsOpen(!isOpen)}
+            className="flex items-center gap-2 text-indigo-600 dark:text-indigo-400 font-semibold cursor-pointer flex-grow"
+        >
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
             <path d="M16.5 6a3 3 0 0 0-3-3H6a3 3 0 0 0-3 3v7.5a3 3 0 0 0 3 3v-6A4.5 4.5 0 0 1 10.5 6h6Z" />
             <path d="M18 7.5a3 3 0 0 1 3 3V18a3 3 0 0 1-3 3h-7.5a3 3 0 0 1-3-3v-7.5a3 3 0 0 1 3-3H18Z" />
@@ -217,18 +222,46 @@ export const InsightPanel: React.FC<InsightPanelProps> = ({
             <span className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${getRiskColor(analysis.riskLevel)}`}>
             Verdict: {analysis.verdict}
             </span>
-            <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                viewBox="0 0 20 20" 
-                fill="currentColor" 
-                className={`w-5 h-5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-            >
-                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
-            </svg>
+            
+            {/* Reorder Controls */}
+            {(onMoveUp || onMoveDown) && (
+                <div className="flex flex-col gap-0.5 opacity-50 hover:opacity-100 transition-opacity">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }} 
+                        disabled={!onMoveUp}
+                        className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-500">
+                            <path fillRule="evenodd" d="M14.77 12.79a.75.75 0 01-1.06-.02L10 8.832 6.29 12.77a.75.75 0 11-1.08-1.04l4.25-4.5a.75.75 0 011.08 0l4.25 4.5a.75.75 0 01-.02 1.06z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+                        disabled={!onMoveDown}
+                        className="p-0.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded disabled:opacity-20"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 text-slate-500">
+                            <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                </div>
+            )}
+
+            <div onClick={() => setIsOpen(!isOpen)} className="cursor-pointer">
+                <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    viewBox="0 0 20 20" 
+                    fill="currentColor" 
+                    className={`w-5 h-5 text-slate-400 dark:text-slate-500 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
+                >
+                    <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+            </div>
         </div>
       </div>
 
       {isExpanded && (
+        // ... (keep existing content)
         <div className="p-6 space-y-5">
             {/* Metric Comparison */}
             <div className="grid grid-cols-2 gap-4">
