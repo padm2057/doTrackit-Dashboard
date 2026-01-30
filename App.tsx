@@ -39,6 +39,9 @@ const App: React.FC = () => {
   // --- STATE INITIALIZATION WITH PERSISTENCE ---
   const [projectData, setProjectData] = useState<ProjectPlan>(() => loadState('dt_project_data', DEFAULT_PROJECT_PLAN));
   
+  // --- UNDO HISTORY STATE ---
+  const [history, setHistory] = useState<ProjectPlan[]>([]);
+
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -79,9 +82,6 @@ const App: React.FC = () => {
   // LIVE TIMER
   const [now, setNow] = useState(new Date());
 
-  // MOBILE PREVIEW STATE
-  const [isMobilePreview, setIsMobilePreview] = useState(false);
-
   // Refs to prevent duplicate auto-saves within the same minute
   const lastSystemSaveDate = useRef<string>('');
   
@@ -89,6 +89,53 @@ const App: React.FC = () => {
   const isRemoteUpdate = useRef(false);
   const isFirstRender = useRef(true);
   
+  // --- UNDO / HISTORY LOGIC ---
+  const pushHistory = () => {
+    setHistory(prev => {
+        // Limit history to 20 steps to prevent memory bloat
+        const newHistory = [...prev, JSON.parse(JSON.stringify(projectData))];
+        if (newHistory.length > 20) {
+            return newHistory.slice(newHistory.length - 20);
+        }
+        return newHistory;
+    });
+  };
+
+  const handleUndo = () => {
+    if (history.length === 0) return;
+    
+    // Get the last state
+    const previousState = history[history.length - 1];
+    
+    // Remove from history
+    setHistory(prev => prev.slice(0, -1));
+    
+    // Restore state
+    setProjectData(previousState);
+    
+    setFeedback({
+        isOpen: true,
+        title: "Undo Successful",
+        message: "Restored previous project state.",
+        type: 'info'
+    });
+    
+    // Auto-close feedback after 1.5s
+    setTimeout(() => setFeedback(prev => ({...prev, isOpen: false})), 1500);
+  };
+
+  // Keyboard Shortcut for Undo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            handleUndo();
+        }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [history]); // Re-bind when history changes to ensure we have latest scope if needed
+
   // --- PERSISTENCE EFFECTS (Local Storage) ---
   useEffect(() => {
     localStorage.setItem('dt_project_data', JSON.stringify(projectData));
@@ -427,6 +474,7 @@ const App: React.FC = () => {
 
 
   const handleTaskToggle = (taskId: string) => {
+    pushHistory(); // Save state before change
     setProjectData(prev => ({
         ...prev,
         tasks: prev.tasks.map(t => {
@@ -472,7 +520,30 @@ const App: React.FC = () => {
     }));
   };
 
+  const handleUpdateTask = (taskId: string, updates: Partial<Task>) => {
+      pushHistory(); // Save state before change
+      setProjectData(prev => ({
+          ...prev,
+          tasks: prev.tasks.map(t => t.id === taskId ? { ...t, ...updates } : t)
+      }));
+  };
+
+  const handleApplyOptimizations = (newTasks: Task[]) => {
+      pushHistory(); // Save state before change
+      setProjectData(prev => ({
+          ...prev,
+          tasks: newTasks
+      }));
+      setFeedback({
+          isOpen: true,
+          title: "Schedule Optimized",
+          message: "The AI Boss has restructured your tasks for better flow and realistic timing.",
+          type: "success"
+      });
+  };
+
   const handleForceTaskToToday = (taskId: string) => {
+      pushHistory(); // Save state before change
       setProjectData(prev => ({
           ...prev,
           tasks: prev.tasks.map(t => {
@@ -492,6 +563,7 @@ const App: React.FC = () => {
   };
   
   const handleRevertForcedTask = (taskId: string) => {
+      pushHistory(); // Save state before change
       setProjectData(prev => ({
           ...prev,
           tasks: prev.tasks.map(t => {
@@ -503,6 +575,16 @@ const App: React.FC = () => {
       }));
   };
 
+  const handleJsonUpdate = (newData: ProjectPlan) => {
+      pushHistory(); // Save state before raw update
+      setProjectData(newData);
+  };
+
+  const handleCloudLoad = (newData: ProjectPlan) => {
+      pushHistory(); // Save state before cloud load
+      setProjectData(newData);
+  };
+
   // --- CALENDAR NOTES HANDLERS ---
   const handleDateClick = (date: Date) => {
       setSelectedNoteDate(date);
@@ -511,6 +593,8 @@ const App: React.FC = () => {
 
   const handleSaveNote = (content: string) => {
       if (!selectedNoteDate) return;
+      
+      pushHistory(); // Save state
 
       const dateKey = getInputValue(selectedNoteDate);
       const newNote: CalendarNote = {
@@ -541,6 +625,8 @@ const App: React.FC = () => {
 
   const handleSaveTaskNote = (content: string) => {
       if (!selectedTaskForNote) return;
+
+      pushHistory(); // Save state
 
       const newNote: TaskNote = {
           id: crypto.randomUUID(),
@@ -750,18 +836,6 @@ const App: React.FC = () => {
                 <span className="hidden md:inline">API Key</span>
              </button>
 
-             {/* Mobile Preview Toggle - Enhanced Visibility */}
-             <button
-                onClick={() => setIsMobilePreview(!isMobilePreview)}
-                className={`flex items-center gap-2 px-2 md:px-3 py-1.5 rounded text-sm font-bold transition-colors border ${isMobilePreview ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border-slate-700'}`}
-                title={isMobilePreview ? "Exit Mobile Preview" : "Mobile Preview"}
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3" />
-                </svg>
-                <span className="hidden md:inline">Mobile</span>
-            </button>
-
              {/* Theme Toggle */}
              <button 
                 onClick={toggleTheme}
@@ -804,6 +878,19 @@ const App: React.FC = () => {
                     <span className="hidden md:inline">Lock Goal</span>
                     </>
                 )}
+            </button>
+            
+            {/* UNDO BUTTON */}
+            <button
+                onClick={handleUndo}
+                disabled={history.length === 0}
+                className="flex items-center gap-2 px-2 md:px-3 py-1.5 rounded text-sm font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Undo last action (Ctrl+Z)"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                    <path fillRule="evenodd" d="M9.53 2.47a.75.75 0 010 1.06L4.81 8.25H15a6.75 6.75 0 010 13.5h-3a.75.75 0 010-1.5h3a5.25 5.25 0 100-10.5H4.81l4.72 4.72a.75.75 0 11-1.06 1.06l-6-6a.75.75 0 010-1.06l6-6a.75.75 0 011.06 0z" clipRule="evenodd" />
+                </svg>
+                <span className="hidden md:inline">Undo</span>
             </button>
 
             {/* Primary Report Button (Download) */}
@@ -877,7 +964,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <main className={`mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 print:py-4 transition-all duration-300 ${isMobilePreview ? 'max-w-[390px] border-x border-slate-200 dark:border-slate-800 shadow-2xl bg-white dark:bg-slate-950 min-h-screen' : 'max-w-7xl'}`}>
+      <main className="mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 print:py-4 transition-all duration-300 max-w-7xl">
         
         {/* PDF Header - Only visible during export */}
         <div className="pdf-header">
@@ -919,10 +1006,10 @@ const App: React.FC = () => {
             
             {/* Bottom: Stats Panel */}
             <div className="w-full bg-slate-50 dark:bg-slate-800/50 px-6 py-5 rounded-xl border border-slate-100 dark:border-slate-800 print:bg-transparent print:border print:border-slate-300 print:px-6">
-                <div className={`flex flex-col ${!isMobilePreview ? 'sm:flex-row' : ''} items-start gap-8`}>
+                <div className="flex flex-col sm:flex-row items-start gap-8">
                     
                     {/* Metrics Grid */}
-                    <div className={`grid grid-cols-2 ${!isMobilePreview ? 'sm:grid-cols-4' : ''} gap-x-8 gap-y-4 w-full`}>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-4 w-full">
                         {/* Effort */}
                         <div>
                             <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider mb-0.5">Total Effort</div>
@@ -946,7 +1033,10 @@ const App: React.FC = () => {
                                     type="date"
                                     disabled={isLocked}
                                     value={getInputValue(projectStartDate)}
-                                    onChange={(e) => setProjectData(prev => ({...prev, project_start_date: e.target.value}))}
+                                    onChange={(e) => {
+                                        pushHistory(); // Save state
+                                        setProjectData(prev => ({...prev, project_start_date: e.target.value}))
+                                    }}
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10 disabled:cursor-not-allowed"
                                 />
 
@@ -983,7 +1073,13 @@ const App: React.FC = () => {
             
             {/* Insight Panel (Right in PDF) */}
             <div className="h-full">
-                <InsightPanel analysis={analysis} forceExpanded={isPdfExport} />
+                <InsightPanel 
+                    analysis={analysis} 
+                    tasks={projectData.tasks}
+                    smartGoal={projectData.smart_goal}
+                    onApplyOptimizations={handleApplyOptimizations}
+                    forceExpanded={isPdfExport} 
+                />
             </div>
         </div>
         
@@ -994,6 +1090,8 @@ const App: React.FC = () => {
                 onTaskToggle={handleTaskToggle} 
                 onForceTask={handleForceTaskToToday}
                 onRevertForceTask={handleRevertForcedTask}
+                onUpdateTask={handleUpdateTask}
+                isLocked={isLocked}
             />
         </div>
 
@@ -1003,7 +1101,7 @@ const App: React.FC = () => {
         {/* Visualizer Image Generator */}
         <ImageGenerator initialPrompt={projectData.smart_goal} />
 
-        <div className={`pdf-charts-grid grid grid-cols-1 ${!isMobilePreview ? 'lg:grid-cols-3' : ''} gap-6 print:block print:space-y-8`}>
+        <div className="pdf-charts-grid grid grid-cols-1 lg:grid-cols-3 gap-6 print:block print:space-y-8">
             <div className="break-inside-avoid">
                 <CapacitySimulatorChart 
                     tasks={projectData.tasks} 
@@ -1057,18 +1155,22 @@ const App: React.FC = () => {
             taskNotes={projectData.task_notes}
             onDateClick={handleDateClick}
             onTaskClick={handleTaskClick}
-            forceMobile={isMobilePreview}
           />
         </section>
 
       </main>
 
-      <JsonEditor initialData={projectData} onUpdate={setProjectData} isOpen={isEditorOpen} setIsOpen={setIsEditorOpen} />
+      <JsonEditor 
+          initialData={projectData} 
+          onUpdate={handleJsonUpdate} 
+          isOpen={isEditorOpen} 
+          setIsOpen={setIsEditorOpen} 
+      />
       <CloudSyncModal 
         isOpen={isCloudModalOpen} 
         onClose={() => setIsCloudModalOpen(false)} 
         projectData={projectData}
-        onLoadProject={(data) => setProjectData(data)}
+        onLoadProject={handleCloudLoad}
       />
       <DateNoteModal 
         isOpen={isNoteModalOpen}

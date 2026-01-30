@@ -35,6 +35,7 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
   readOnly = false
 }) => {
   const [isMounted, setIsMounted] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
 
   useEffect(() => {
     setIsMounted(true);
@@ -99,8 +100,12 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
   const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
 
   return (
-    <div className="bg-white dark:bg-slate-900 p-6 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 h-80 flex flex-col w-full">
-      <div className="flex justify-between items-start mb-2">
+    <div className="bg-white dark:bg-slate-900 rounded-lg shadow-sm border border-slate-200 dark:border-slate-800 transition-all duration-200 h-auto flex flex-col w-full">
+      {/* Accordion Header */}
+      <div 
+        onClick={() => setIsOpen(!isOpen)}
+        className={`px-6 py-4 flex justify-between items-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${isOpen ? 'border-b border-slate-200 dark:border-slate-800' : ''}`}
+      >
         <div>
           <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             Schedule Scenarios
@@ -108,96 +113,111 @@ export const CapacitySimulatorChart: React.FC<CapacitySimulatorChartProps> = ({
                <span className="bg-slate-100 dark:bg-slate-800 text-slate-500 text-[10px] px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">LOCKED</span>
             )}
           </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Compare delivery speeds.</p>
+          {!isOpen && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Compare delivery speeds.</p>}
         </div>
         
-        {/* Buffer Input - Interactive */}
-        <div className={`flex flex-col items-end ${readOnly ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
-            <label className="text-[10px] uppercase font-bold text-slate-400 mb-1">Safety Buffer %</label>
-            <div className="flex items-center gap-2">
-                <input 
-                    type="range"
-                    min="0"
-                    max="100"
-                    step="5"
-                    disabled={readOnly}
-                    value={bufferPercent}
-                    onChange={(e) => onBufferChange(parseInt(e.target.value))}
-                    className="w-24 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:cursor-not-allowed"
-                />
-                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 min-w-[30px] text-right">
-                    {bufferPercent}%
-                </span>
-            </div>
+        <div className={`text-slate-400 dark:text-slate-500 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+            </svg>
         </div>
       </div>
       
-      <div className="flex-1 min-h-0 min-w-0 relative">
-        <div className="absolute inset-0">
-          {isMounted ? (
-            <ResponsiveContainer width="100%" height="100%" debounce={50}>
-                <BarChart
-                layout="vertical"
-                data={data}
-                margin={{ top: 10, right: 60, left: 10, bottom: 5 }}
-                barCategoryGap={20}
-                >
-                <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={true} stroke={gridColor} />
-                <XAxis type="number" hide />
-                <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    width={85} 
-                    tick={{ fontSize: 11, fill: axisColor, fontWeight: 600 }}
-                    interval={0}
-                />
-                <Tooltip
-                    cursor={{ fill: 'transparent' }}
-                    content={({ active, payload }) => {
-                    if (active && payload && payload.length) {
-                        const d = payload[0].payload;
-                        return (
-                        <div className="bg-white dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 shadow-lg rounded text-xs z-50">
-                            <div className="font-bold text-slate-800 dark:text-slate-200">{d.name}</div>
-                            <div className="text-slate-500 dark:text-slate-400 mb-1">{d.desc}</div>
-                            <div className="flex justify-between gap-4 border-t border-slate-100 dark:border-slate-700 pt-1 mt-1">
-                            <span className="text-slate-600 dark:text-slate-400">Duration:</span>
-                            <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{d.days} Days</span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                            <span className="text-slate-600 dark:text-slate-400">Launch:</span>
-                            <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{d.date}</span>
-                            </div>
-                        </div>
-                        );
-                    }
-                    return null;
-                    }}
-                />
-                <Bar dataKey="days" radius={[0, 4, 4, 0]} barSize={32}>
-                    {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={entry.opacity} />
-                    ))}
-                    <LabelList 
-                    dataKey="date" 
-                    position="right" 
-                    style={{ fontSize: '11px', fontWeight: 'bold', fill: isDarkMode ? '#94a3b8' : '#475569' }} 
-                    />
-                </Bar>
-                </BarChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="w-full h-full flex items-center justify-center">
-                <div className="w-5 h-5 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
-            </div>
-          )}
+      {/* Content */}
+      {isOpen && (
+        <div className="p-6 h-80 flex flex-col animate-fade-in">
+             <div className="flex justify-between items-start mb-2">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Compare delivery speeds.</p>
+                
+                {/* Buffer Input - Interactive */}
+                <div className={`flex flex-col items-end ${readOnly ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 mb-1">Safety Buffer %</label>
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            disabled={readOnly}
+                            value={bufferPercent}
+                            onChange={(e) => onBufferChange(parseInt(e.target.value))}
+                            className="w-24 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600 disabled:cursor-not-allowed"
+                        />
+                        <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 min-w-[30px] text-right">
+                            {bufferPercent}%
+                        </span>
+                    </div>
+                </div>
+             </div>
+             
+             <div className="flex-1 min-h-0 min-w-0 relative">
+                <div className="absolute inset-0">
+                {isMounted ? (
+                    <ResponsiveContainer width="100%" height="100%" debounce={50}>
+                        <BarChart
+                        layout="vertical"
+                        data={data}
+                        margin={{ top: 10, right: 60, left: 10, bottom: 5 }}
+                        barCategoryGap={20}
+                        >
+                        <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={true} stroke={gridColor} />
+                        <XAxis type="number" hide />
+                        <YAxis 
+                            dataKey="name" 
+                            type="category" 
+                            width={85} 
+                            tick={{ fontSize: 11, fill: axisColor, fontWeight: 600 }}
+                            interval={0}
+                        />
+                        <Tooltip
+                            cursor={{ fill: 'transparent' }}
+                            content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                                const d = payload[0].payload;
+                                return (
+                                <div className="bg-white dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 shadow-lg rounded text-xs z-50">
+                                    <div className="font-bold text-slate-800 dark:text-slate-200">{d.name}</div>
+                                    <div className="text-slate-500 dark:text-slate-400 mb-1">{d.desc}</div>
+                                    <div className="flex justify-between gap-4 border-t border-slate-100 dark:border-slate-700 pt-1 mt-1">
+                                    <span className="text-slate-600 dark:text-slate-400">Duration:</span>
+                                    <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{d.days} Days</span>
+                                    </div>
+                                    <div className="flex justify-between gap-4">
+                                    <span className="text-slate-600 dark:text-slate-400">Launch:</span>
+                                    <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{d.date}</span>
+                                    </div>
+                                </div>
+                                );
+                            }
+                            return null;
+                            }}
+                        />
+                        <Bar dataKey="days" radius={[0, 4, 4, 0]} barSize={32}>
+                            {data.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={entry.opacity} />
+                            ))}
+                            <LabelList 
+                            dataKey="date" 
+                            position="right" 
+                            style={{ fontSize: '11px', fontWeight: 'bold', fill: isDarkMode ? '#94a3b8' : '#475569' }} 
+                            />
+                        </Bar>
+                        </BarChart>
+                    </ResponsiveContainer>
+                ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-5 h-5 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
+                    </div>
+                )}
+                </div>
+                
+                {/* Comparison Text Overlay */}
+                <div className="absolute bottom-2 right-2 text-[10px] text-slate-400 dark:text-slate-500 italic bg-white/80 dark:bg-slate-900/80 px-2 rounded">
+                    Working "Max Velocity" saves {Math.max(0, data[1].days - data[2].days)} days vs Current.
+                </div>
+             </div>
         </div>
-        
-        {/* Comparison Text Overlay */}
-        <div className="absolute bottom-2 right-2 text-[10px] text-slate-400 dark:text-slate-500 italic bg-white/80 dark:bg-slate-900/80 px-2 rounded">
-            Working "Max Velocity" saves {Math.max(0, data[1].days - data[2].days)} days vs Current.
-        </div>
-      </div>
+      )}
     </div>
   );
 };

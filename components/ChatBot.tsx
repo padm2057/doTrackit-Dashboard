@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GoogleGenAI, Chat } from "@google/genai";
+import ReactMarkdown from 'react-markdown';
 import { ProjectPlan, ProcessedTask } from '../types';
 
 interface ChatBotProps {
@@ -108,7 +109,8 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
                 Guidelines:
                 1. Answer questions about dates, dependencies, and risks based on the Schedule provided.
                 2. Be concise, direct, and encouraging but realistic ("tough love").
-                3. If the user asks to change the plan, guide them to use the Edit Data button.
+                3. Use Markdown formatting (bold, lists, etc.) to make your responses easy to read.
+                4. If the user asks to change the plan, guide them to use the Edit Data button.
                 `
             }
         });
@@ -202,16 +204,22 @@ export const ChatBot: React.FC<ChatBotProps> = ({ projectPlan, processedTasks })
                 {messages.map((msg, idx) => (
                     <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         <div 
-                            className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
+                            className={`max-w-[90%] rounded-2xl px-4 py-2 text-sm ${
                                 msg.role === 'user' 
                                 ? 'bg-indigo-600 text-white rounded-br-sm' 
                                 : msg.isError 
                                     ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
                                     : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-bl-sm shadow-sm'
                             }`}
-                            style={{ color: msg.role === 'user' ? '#ffffff' : '' }}
                         >
-                            {msg.text}
+                            <div className={`prose prose-sm max-w-none break-words leading-relaxed [&>p]:my-1 [&>ul]:my-1 [&>ol]:my-1 ${
+                                msg.role === 'user' 
+                                ? 'prose-invert prose-p:text-white prose-a:text-white' 
+                                : 'dark:prose-invert'
+                            }`}>
+                                <ReactMarkdown>{msg.text}</ReactMarkdown>
+                            </div>
+                            
                             {msg.isError && (
                                 <button 
                                     onClick={() => triggerKeySelection()}

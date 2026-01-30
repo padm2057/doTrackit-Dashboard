@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { ProcessedTask } from '../types';
+import { ProcessedTask, Task } from '../types';
 
 interface ProjectTableProps {
   tasks: ProcessedTask[];
   onTaskToggle?: (taskId: string) => void;
   onForceTask?: (taskId: string) => void;
   onRevertForceTask?: (taskId: string) => void;
+  onUpdateTask?: (taskId: string, updates: Partial<Task>) => void;
+  isLocked?: boolean;
 }
 
-export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle, onForceTask, onRevertForceTask }) => {
+export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle, onForceTask, onRevertForceTask, onUpdateTask, isLocked = false }) => {
   const [isOpen, setIsOpen] = useState(false);
   const totalHours = tasks.reduce((sum, t) => sum + t.duration_hours, 0);
 
@@ -97,7 +99,7 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
                 const percentage = Math.round((task.duration_hours / totalHours) * 100);
                 
                 // Calculate dependency lock for table view
-                const isLocked = !task.isCompleted && task.predecessors.some(pId => {
+                const isLockedDependency = !task.isCompleted && task.predecessors.some(pId => {
                     const p = tasks.find(t => t.id === pId);
                     return p && !p.isCompleted;
                 });
@@ -109,15 +111,15 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
                 return (
                     <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td 
-                        onClick={() => !isLocked && onTaskToggle && onTaskToggle(task.id)}
+                        onClick={() => !isLockedDependency && onTaskToggle && onTaskToggle(task.id)}
                         className={`px-6 py-4 whitespace-nowrap align-top`}
-                        title={isLocked ? "Complete predecessors first" : "Click to toggle completion"}
+                        title={isLockedDependency ? "Complete predecessors first" : "Click to toggle completion"}
                     >
                          <div className={`
                             flex items-center justify-center w-6 h-6 rounded-full border text-[10px] font-bold transition-all duration-200 cursor-pointer
                             ${task.isCompleted 
                                 ? 'bg-black dark:bg-slate-200 text-white dark:text-slate-900 border-black dark:border-slate-200 ring-2 ring-indigo-500 ring-offset-2 dark:ring-offset-slate-900' 
-                                : isLocked
+                                : isLockedDependency
                                     ? 'bg-slate-100 text-slate-300 border-slate-200 dark:bg-slate-800 dark:text-slate-600 dark:border-slate-700 cursor-not-allowed'
                                     : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-600 hover:border-indigo-500 hover:text-indigo-600'
                             }
@@ -190,13 +192,39 @@ export const ProjectTable: React.FC<ProjectTableProps> = ({ tasks, onTaskToggle,
                     </td>
                     <td className="px-6 py-4 align-top">
                         <div className="w-full max-w-xs">
-                            <div className="flex justify-between items-baseline mb-1">
-                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{task.duration_hours}h</span>
+                            <div className="flex justify-between items-center mb-1">
+                                <div className="flex items-center gap-1 group">
+                                    <input 
+                                        type="number" 
+                                        min="0"
+                                        max="24"
+                                        step="1"
+                                        className="w-14 bg-transparent border-b border-dashed border-slate-300 dark:border-slate-700 hover:border-indigo-500 focus:border-indigo-500 focus:ring-0 text-sm font-bold text-slate-700 dark:text-slate-200 text-right outline-none transition-colors py-0 disabled:opacity-50"
+                                        value={task.duration_hours}
+                                        disabled={task.isCompleted || isLocked}
+                                        onChange={(e) => {
+                                            let val = parseFloat(e.target.value);
+                                            // Handle empty input or invalid input gracefully
+                                            if (isNaN(val)) return;
+                                            
+                                            // Clamp value to 0-24
+                                            if (val > 24) val = 24;
+                                            if (val < 0) val = 0;
+
+                                            if (onUpdateTask) {
+                                                onUpdateTask(task.id, { duration_hours: val });
+                                            }
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                        title={task.isCompleted ? "Task completed" : isLocked ? "Unlock goal to edit duration" : "Edit estimated duration (max 24h)"}
+                                    />
+                                    <span className="text-xs text-slate-400 font-bold">h</span>
+                                </div>
                                 <span className="text-xs text-slate-500 dark:text-slate-400">{percentage}% of total</span>
                             </div>
                             <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
                                 <div 
-                                    className="bg-indigo-500 h-2.5 rounded-full" 
+                                    className="bg-indigo-500 h-2.5 rounded-full transition-all duration-300" 
                                     style={{ width: `${Math.max(percentage, 5)}%` }}
                                 ></div>
                             </div>
