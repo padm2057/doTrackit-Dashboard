@@ -66,26 +66,6 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // Calculations
-  const processedTasks = useMemo(() => 
-    calculateProjectSchedule(
-      projectData.tasks, 
-      weekdayHours, 
-      weekendHours, 
-      projectData.project_start_date ? new Date(projectData.project_start_date) : undefined,
-      new Date(), // Current date for execution context
-      projectData.non_working_days || []
-    ), 
-  [projectData, weekdayHours, weekendHours]);
-
-  const dailyWorkload = useMemo(() => 
-    calculateDailyWorkload(processedTasks, weekdayHours, weekendHours, projectData.non_working_days || []),
-  [processedTasks, weekdayHours, weekendHours, projectData.non_working_days]);
-
-  const analysis = useMemo(() => 
-    analyzeProjectPlan(projectData.tasks, weekdayHours, weekendHours, bufferPercent),
-  [projectData.tasks, weekdayHours, weekendHours, bufferPercent]);
-
   // Helpers
   const getInputValue = (date: Date) => {
     const y = date.getFullYear();
@@ -97,6 +77,107 @@ export default function App() {
   const formatShortDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
+
+  // Render variables
+  const projectStartDate = projectData.project_start_date ? new Date(projectData.project_start_date) : new Date();
+
+  // --- SCHEDULE CALCULATIONS ---
+
+  // 1. Main Schedule (Current State)
+  const processedTasks = useMemo(() => 
+    calculateProjectSchedule(
+      projectData.tasks, 
+      weekdayHours, 
+      weekendHours, 
+      projectStartDate,
+      new Date(), // Current date for execution context
+      projectData.non_working_days || []
+    ), 
+  [projectData, weekdayHours, weekendHours, projectStartDate]);
+
+  // Helper for baseline source (pure estimates, ignoring completion)
+  const baselineTasksSource = useMemo(() => {
+    return projectData.tasks.map(t => ({...t, isCompleted: false, completionDate: undefined, hoursCompleted: 0}));
+  }, [projectData.tasks]);
+
+  // 2. Baseline (Ghost): Pure estimates, default capacity, from start
+  const baselineTasks = useMemo(() => {
+    return calculateProjectSchedule(
+        baselineTasksSource,
+        weekdayHours,
+        weekendHours,
+        projectStartDate,
+        undefined, // No 'now' context
+        projectData.non_working_days || []
+    );
+  }, [baselineTasksSource, weekdayHours, weekendHours, projectStartDate, projectData.non_working_days]);
+
+  // 3. Baseline Realistic (Ghost): Estimates + Buffer, default capacity
+  const baselineRealisticTasks = useMemo(() => {
+    const buffered = baselineTasksSource.map(t => ({...t, duration_hours: t.duration_hours * (1 + bufferPercent/100)}));
+    return calculateProjectSchedule(
+        buffered,
+        weekdayHours,
+        weekendHours,
+        projectStartDate,
+        undefined,
+        projectData.non_working_days || []
+    );
+  }, [baselineTasksSource, weekdayHours, weekendHours, bufferPercent, projectStartDate, projectData.non_working_days]);
+
+  // 4. Baseline Max Velocity (Ghost): Pure estimates, Max capacity (10/5)
+  const baselineMaxVelocityTasks = useMemo(() => {
+    return calculateProjectSchedule(
+        baselineTasksSource,
+        10,
+        5,
+        projectStartDate,
+        undefined,
+        projectData.non_working_days || []
+    );
+  }, [baselineTasksSource, projectStartDate, projectData.non_working_days]);
+
+  // 5. Current Max Velocity (Overlay): Current state, Max capacity
+  const maxVelocityTasks = useMemo(() => {
+    return calculateProjectSchedule(
+        projectData.tasks,
+        10,
+        5,
+        projectStartDate,
+        new Date(), // Use 'now'
+        projectData.non_working_days || []
+    );
+  }, [projectData.tasks, projectStartDate, projectData.non_working_days]);
+
+  // 6. Realistic Tasks (Overlay): Current state + Buffer
+  const realisticTasks = useMemo(() => 
+    calculateProjectSchedule(
+      projectData.tasks.map(t => ({...t, duration_hours: t.duration_hours * (1 + bufferPercent/100)})), 
+      weekdayHours, 
+      weekendHours, 
+      projectStartDate,
+      new Date(),
+      projectData.non_working_days || []
+    ), [projectData, weekdayHours, weekendHours, bufferPercent, projectStartDate]);
+
+  const dailyWorkload = useMemo(() => 
+    calculateDailyWorkload(processedTasks, weekdayHours, weekendHours, projectData.non_working_days || []),
+  [processedTasks, weekdayHours, weekendHours, projectData.non_working_days]);
+
+  const analysis = useMemo(() => 
+    analyzeProjectPlan(projectData.tasks, weekdayHours, weekendHours, bufferPercent),
+  [projectData.tasks, weekdayHours, weekendHours, bufferPercent]);
+
+  
+  const finishDate = processedTasks.length > 0 
+        ? processedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, new Date(0)) 
+        : new Date();
+  const totalDurationDays = Math.ceil((finishDate.getTime() - projectStartDate.getTime()) / (1000 * 60 * 60 * 24));
+
+  const realisticFinishDate = realisticTasks.length > 0 
+      ? realisticTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, new Date(0)) 
+      : new Date();
+  const realisticDurationDays = Math.ceil((realisticFinishDate.getTime() - projectStartDate.getTime()) / (1000 * 60 * 60 * 24));
 
   // Handlers
   const handleForceTaskToToday = (taskId: string) => {
@@ -259,29 +340,6 @@ export default function App() {
       setTaskNoteModal({ isOpen: false, task: null });
   };
 
-  // Render variables
-  const projectStartDate = projectData.project_start_date ? new Date(projectData.project_start_date) : new Date();
-  const finishDate = processedTasks.length > 0 
-        ? processedTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, new Date(0)) 
-        : new Date();
-  const totalDurationDays = Math.ceil((finishDate.getTime() - projectStartDate.getTime()) / (1000 * 60 * 60 * 24));
-
-  // Simulating realistic finish
-  const realisticTasks = useMemo(() => 
-    calculateProjectSchedule(
-      projectData.tasks.map(t => ({...t, duration_hours: t.duration_hours * (1 + bufferPercent/100)})), 
-      weekdayHours, 
-      weekendHours, 
-      projectStartDate,
-      new Date(),
-      projectData.non_working_days || []
-    ), [projectData, weekdayHours, weekendHours, bufferPercent, projectStartDate]);
-  
-  const realisticFinishDate = realisticTasks.length > 0 
-      ? realisticTasks.reduce((max, t) => t.endDate > max ? t.endDate : max, new Date(0)) 
-      : new Date();
-  const realisticDurationDays = Math.ceil((realisticFinishDate.getTime() - projectStartDate.getTime()) / (1000 * 60 * 60 * 24));
-
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'dark bg-slate-950' : 'bg-slate-50'}`}>
         <div className="max-w-[1600px] mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8">
@@ -389,7 +447,11 @@ export default function App() {
             <div className="w-full">
                 <GanttChart 
                     tasks={processedTasks}
+                    baselineTasks={baselineTasks}
+                    baselineRealisticTasks={baselineRealisticTasks}
+                    baselineMaxVelocityTasks={baselineMaxVelocityTasks}
                     realisticTasks={realisticTasks}
+                    maxVelocityTasks={maxVelocityTasks}
                     weekendHours={weekendHours}
                     weekdayHours={weekdayHours}
                     projectStartDate={projectStartDate}
