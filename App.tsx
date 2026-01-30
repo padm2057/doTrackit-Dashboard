@@ -44,6 +44,15 @@ export default function App() {
   const [isLocked, setIsLocked] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(false);
 
+  // Derived Values
+  const projectStartDate = useMemo(() => {
+    if (projectData.project_start_date) {
+      const [y, m, d] = projectData.project_start_date.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+    return new Date();
+  }, [projectData.project_start_date]);
+
   // Modals
   const [isJsonEditorOpen, setIsJsonEditorOpen] = useState(false);
   const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
@@ -77,9 +86,6 @@ export default function App() {
   const formatShortDate = (date: Date) => {
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
-
-  // Render variables
-  const projectStartDate = projectData.project_start_date ? new Date(projectData.project_start_date) : new Date();
 
   // --- SCHEDULE CALCULATIONS ---
 
@@ -297,7 +303,14 @@ export default function App() {
           ...prev,
           tasks: prev.tasks.map(t => {
               if (t.id === taskId) {
-                   return { ...t, hoursCompleted: targetHours };
+                   // If visual progress meets or exceeds duration, mark fully done
+                   const isFullyDone = targetHours >= (t.duration_hours - 0.05); // Tolerance for float
+                   return { 
+                       ...t, 
+                       hoursCompleted: targetHours,
+                       isCompleted: isFullyDone,
+                       completionDate: isFullyDone ? new Date().toISOString() : (t.isCompleted && !isFullyDone ? undefined : t.completionDate)
+                   };
               }
               return t;
           })
@@ -458,11 +471,13 @@ export default function App() {
                     currentDate={new Date()}
                     isDarkMode={isDarkMode}
                     isExecutionMode={isLocked}
+                    onTaskToggle={handleTaskToggle}
                     onChunkClick={handleChunkClick}
                     calendarNotes={projectData.calendar_notes}
                     taskNotes={projectData.task_notes}
                     onDateClick={(d) => setDateNoteModal({ isOpen: true, date: d })}
                     onTaskClick={(t) => setTaskNoteModal({ isOpen: true, task: t })}
+                    bufferPercent={bufferPercent}
                 />
             </div>
 

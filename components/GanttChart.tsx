@@ -255,6 +255,9 @@ export const GanttChart: React.FC<GanttChartProps> = ({
             <div className="px-6 py-3 border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
                 <div className="flex items-center gap-4 border-r border-slate-200 dark:border-slate-700 pr-4 mr-2">
                         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
+                            <span className="w-8 h-2 border-2 border-slate-400 border-dashed rounded-sm bg-slate-100 opacity-60"></span> Ghost Base
+                        </div>
+                        <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
                             <span className="w-8 h-2 bg-emerald-500 rounded-sm"></span> Realistic (+{bufferPercent}%)
                         </div>
                         <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
@@ -302,9 +305,7 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                             const isHovered = hoveredTask === task.id;
 
                             // Track partial progress
-                            const totalHours = task.duration_hours;
                             const hoursDone = task.hoursCompleted || 0;
-                            
                             let accumulatedHours = 0;
 
                             return (
@@ -315,19 +316,49 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                                     onMouseEnter={() => setHoveredTask(task.id)}
                                     onMouseLeave={() => setHoveredTask(null)}
                                 >
-                                    {/* Task Name - Sticky within the task block */}
-                                    <div style={{ width: NAME_COL_WIDTH }} className="absolute top-0 left-0 pt-3 px-3 z-20 pointer-events-none">
-                                        <div className="flex flex-col min-w-0">
-                                            <span className={`truncate text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-0.5`}>
-                                                ID {task.id}
-                                            </span>
-                                            <span 
-                                                className={`truncate transition-all font-semibold ${task.isCompleted ? 'text-slate-400 line-through' : (isDependencyLocked ? 'text-slate-400 dark:text-slate-600' : textOpacityClass)}`}
-                                                title={task.task_name}
-                                            >
-                                                {!isMobile ? shortName : ''}
-                                            </span>
+                                    {/* Task Name & Completion Toggle */}
+                                    <div style={{ width: NAME_COL_WIDTH }} className="absolute top-0 left-0 pt-3 px-3 z-20 flex items-start gap-3">
+                                        
+                                        {/* Interactive Toggle Button */}
+                                        <div 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!isDependencyLocked && onTaskToggle) onTaskToggle(task.id);
+                                            }}
+                                            className={`
+                                                flex items-center justify-center w-5 h-5 rounded-md shadow-sm border text-[9px] font-bold transition-all duration-200 flex-shrink-0 cursor-pointer mt-0.5 select-none
+                                                ${task.isCompleted 
+                                                    ? 'bg-emerald-600 dark:bg-emerald-500 text-white border-emerald-700 dark:border-emerald-400 hover:bg-emerald-700' 
+                                                    : isDependencyLocked
+                                                        ? 'bg-slate-100 text-slate-300 border-slate-200 dark:bg-slate-800/50 dark:text-slate-600 dark:border-slate-700 cursor-not-allowed opacity-60' 
+                                                        : 'bg-white dark:bg-slate-900 text-slate-500 border-slate-300 dark:border-slate-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}
+                                            `}
+                                            title={isDependencyLocked ? "Locked by dependency" : "Toggle Completion"}
+                                        >
+                                            {task.isCompleted ? (
+                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                                                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                                                </svg>
+                                            ) : (
+                                                <span className="font-mono">{task.id}</span>
+                                            )}
                                         </div>
+
+                                        {/* Text Info */}
+                                        {!isMobile && (
+                                            <div className="flex flex-col min-w-0">
+                                                <span 
+                                                    className={`truncate text-xs font-semibold leading-tight transition-all cursor-pointer ${task.isCompleted ? 'text-slate-400 line-through' : (isDependencyLocked ? 'text-slate-400 dark:text-slate-600' : 'text-slate-700 dark:text-slate-200 hover:text-indigo-600')}`}
+                                                    title={task.task_name}
+                                                    onClick={() => onTaskClick && onTaskClick(task)}
+                                                >
+                                                    {shortName}
+                                                </span>
+                                                <span className={`truncate text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mt-0.5`}>
+                                                    {task.phase}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                     
                                     {/* Sub-Rows (Chunks) Container - Aligns with timeline rows */}
@@ -572,10 +603,10 @@ export const GanttChart: React.FC<GanttChartProps> = ({
 
                                         {/* SCENARIO: Realistic (Top sub-row edge) */}
                                         {baselineRealistic && <div className="absolute rounded-sm border border-emerald-300 dark:border-emerald-700/50 bg-emerald-100/30 dark:bg-emerald-900/10 pointer-events-none" style={{ left: (baselineRealistic.startOffsetDays + VISUAL_SHIFT_DAYS) * DAY_WIDTH, width: Math.max(baselineRealistic.durationDays * DAY_WIDTH, 4), height: 4, top: 4, borderStyle: 'dashed' }} />}
-                                        {!isDone && realistic && <div className="absolute rounded-sm bg-emerald-400/80 dark:bg-emerald-500/80 pointer-events-none z-10" style={{ left: (realistic.startOffsetDays + VISUAL_SHIFT_DAYS) * DAY_WIDTH, width: Math.max(realistic.durationDays * DAY_WIDTH, 4), height: 4, top: 4 }} />}
+                                        {!isDone && realistic && <div className="absolute rounded-sm bg-emerald-400/80 dark:bg-emerald-500/80 pointer-events-none z-10" style={{ left: (realistic.startOffsetDays + VISUAL_SHIFT_DAYS) * DAY_WIDTH, width: Math.max(realistic.durationDays * DAY_WIDTH, 4), height: 6, top: 4 }} />}
 
                                         {/* SCENARIO: Baseline Shadow (Upper Middle sub-row) */}
-                                        {baseline && <div className="absolute rounded-sm bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-600 pointer-events-none" style={{ left: (baseline.startOffsetDays + VISUAL_SHIFT_DAYS) * DAY_WIDTH, width: Math.max(baseline.durationDays * DAY_WIDTH, 4), height: 14, top: 10, opacity: 0.6, borderStyle: 'dashed' }} />}
+                                        {baseline && <div className="absolute rounded-sm bg-slate-300 dark:bg-slate-600 border border-slate-400 dark:border-slate-500 pointer-events-none" style={{ left: (baseline.startOffsetDays + VISUAL_SHIFT_DAYS) * DAY_WIDTH, width: Math.max(baseline.durationDays * DAY_WIDTH, 4), height: 14, top: 10, opacity: 0.8, borderStyle: 'dashed' }} />}
 
                                         {/* MAIN TASK CHUNKS (Waterfall Sub-Rows) */}
                                         {layout.chunks.length > 0 ? layout.chunks.map(([dateStr, hours], index) => {
@@ -631,7 +662,7 @@ export const GanttChart: React.FC<GanttChartProps> = ({
 
                                         {/* SCENARIO: Max Velocity (Bottom of expanded row) */}
                                         {baselineMaxVel && <div className="absolute rounded-sm border border-rose-300 dark:border-rose-700/50 bg-rose-100/30 dark:bg-rose-900/10 pointer-events-none" style={{ left: (baselineMaxVel.startOffsetDays + VISUAL_SHIFT_DAYS) * DAY_WIDTH, width: Math.max(baselineMaxVel.durationDays * DAY_WIDTH, 4), height: 4, top: layout.height - 6, borderStyle: 'dashed' }} />}
-                                        {!isDone && maxVel && <div className="absolute rounded-sm bg-rose-400/80 dark:bg-rose-500/80 pointer-events-none z-10" style={{ left: (maxVel.startOffsetDays + VISUAL_SHIFT_DAYS) * DAY_WIDTH, width: Math.max(maxVel.durationDays * DAY_WIDTH, 4), height: 4, top: layout.height - 6 }} />}
+                                        {!isDone && maxVel && <div className="absolute rounded-sm bg-rose-500/90 pointer-events-none z-10" style={{ left: (maxVel.startOffsetDays + VISUAL_SHIFT_DAYS) * DAY_WIDTH, width: Math.max(maxVel.durationDays * DAY_WIDTH, 4), height: 6, top: layout.height - 7 }} />}
                                     </div>
                                 );
                             })}
