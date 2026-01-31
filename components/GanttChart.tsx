@@ -299,14 +299,8 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                                 return pred && !pred.isCompleted;
                             });
                             const isDependencyLocked = !task.isCompleted && hasUnfinishedPredecessors;
-                            const textOpacityClass = isExecutionMode && !task.isCompleted ? 'opacity-80' : '';
                             const hasNotes = taskNotes.some(n => n.taskId === task.id);
-                            
                             const isHovered = hoveredTask === task.id;
-
-                            // Track partial progress
-                            const hoursDone = task.hoursCompleted || 0;
-                            let accumulatedHours = 0;
 
                             return (
                                 <div 
@@ -361,76 +355,6 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                                         )}
                                     </div>
                                     
-                                    {/* Sub-Rows (Chunks) Container - Aligns with timeline rows */}
-                                    <div className="w-full h-full relative">
-                                        {layout.chunks.length > 0 ? layout.chunks.map(([dateStr, hours], idx) => {
-                                            // Calculate top position exactly as done in the Chart Area
-                                            // Pushed down by CONTENT_START_Y to avoid overlapping the Task Name
-                                            const chunkTop = CONTENT_START_Y + (idx * SUB_ROW_HEIGHT);
-                                            
-                                            // Determine if this chunk is "covered" by completed hours
-                                            const chunkEndHours = accumulatedHours + hours;
-                                            const isChunkDone = hoursDone >= chunkEndHours;
-                                            const isPartiallyDone = !isChunkDone && hoursDone > accumulatedHours;
-                                            
-                                            // Store current accum for the click handler closure
-                                            const targetHoursIfClicked = chunkEndHours; 
-                                            const prevAccum = accumulatedHours;
-                                            accumulatedHours += hours;
-
-                                            return (
-                                                <div key={idx} style={{ top: chunkTop - 6, height: 32 }} className="absolute w-full flex items-center px-3 z-10">
-                                                    <div className="flex items-center w-full min-w-0">
-                                                        <div 
-                                                            onClick={() => !isDependencyLocked && onChunkClick && onChunkClick(task.id, isChunkDone ? prevAccum : targetHoursIfClicked)} 
-                                                            className={`
-                                                                flex items-center justify-center w-6 h-6 rounded-md border shadow-sm text-[10px] font-bold transition-all duration-200 flex-shrink-0 mr-3 z-10 relative cursor-pointer select-none group
-                                                                ${isChunkDone 
-                                                                    ? 'bg-emerald-600 dark:bg-emerald-500 text-white border-emerald-700 dark:border-emerald-400 hover:bg-emerald-700 dark:hover:bg-emerald-600' 
-                                                                    : isPartiallyDone
-                                                                        ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700'
-                                                                        : isDependencyLocked 
-                                                                            ? 'bg-slate-100 text-slate-300 border-slate-200 dark:bg-slate-800/50 dark:text-slate-600 dark:border-slate-700 cursor-not-allowed opacity-70' 
-                                                                            : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}
-                                                            `}
-                                                            title={isChunkDone ? "Mark section incomplete" : (isDependencyLocked ? "Locked by dependency" : "Mark section complete")}
-                                                        >
-                                                            {isChunkDone ? (
-                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                                                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                                                                </svg>
-                                                            ) : (
-                                                                <span className="font-mono group-hover:hidden">{idx + 1}</span>
-                                                            )}
-                                                            
-                                                            {/* Hover checkmark for pending items */}
-                                                            {!isChunkDone && !isDependencyLocked && (
-                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 hidden group-hover:block text-emerald-500 dark:text-emerald-400">
-                                                                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
-                                                                </svg>
-                                                            )}
-                                                        </div>
-                                                        <div className="flex items-center gap-1.5">
-                                                            <span className={`text-[10px] font-mono ${isChunkDone ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400'}`}>
-                                                                {hours}h
-                                                            </span>
-                                                            {isPartiallyDone && (
-                                                                <span className="text-[9px] text-amber-600 font-bold px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800">
-                                                                    In Progress
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )
-                                        }) : (
-                                            /* Fallback for empty chunks (should rare/impossible with current logic) */
-                                            <div className="absolute top-[48px] w-full px-3">
-                                                <div className="text-xs text-red-500">No schedule</div>
-                                            </div>
-                                        )}
-                                    </div>
-
                                     {/* Notes Column - Spans full height */}
                                     <div style={{ width: NOTES_COL_WIDTH }} className="absolute top-0 right-0 h-full flex items-start justify-center pt-2 border-l border-slate-100 dark:border-slate-700 z-20">
                                         <button 
@@ -584,6 +508,12 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                                 const isDone = task.isCompleted;
                                 const isHovered = hoveredTask === task.id;
                                 
+                                const hasUnfinishedPredecessors = task.predecessors.some(predId => {
+                                    const pred = tasks.find(t => t.id === predId);
+                                    return pred && !pred.isCompleted;
+                                });
+                                const isDependencyLocked = !task.isCompleted && hasUnfinishedPredecessors;
+                                
                                 // Track accumulated visual progress for styling bar chunks
                                 const hoursDone = task.hoursCompleted || 0;
                                 let accumulatedHours = 0;
@@ -621,18 +551,24 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                                             
                                             const chunkEndHours = accumulatedHours + hours;
                                             const isChunkDone = hoursDone >= chunkEndHours;
+                                            const isPartiallyDone = !isChunkDone && hoursDone > accumulatedHours;
+                                            
+                                            // Store current accum for the click handler closure
+                                            const targetHoursIfClicked = chunkEndHours; 
+                                            const prevAccum = accumulatedHours;
                                             accumulatedHours += hours;
 
                                             return (
                                                 <div
                                                     key={dateStr}
-                                                    className={`absolute rounded-md shadow-sm border flex items-center justify-center z-20 group cursor-help transition-all duration-300 overflow-hidden ${getPhaseColor(task.phase)} ${isChunkDone ? 'opacity-50 saturate-0 border-dashed' : ''} ${isDone ? 'opacity-75 saturate-75' : ''} ${isHovered ? 'ring-2 ring-indigo-400 dark:ring-indigo-500 ring-offset-1 dark:ring-offset-slate-900 z-30' : ''}`}
+                                                    className={`absolute rounded-md shadow-sm border flex items-center pl-1 z-20 group cursor-pointer transition-all duration-300 overflow-hidden ${getPhaseColor(task.phase)} ${isChunkDone ? 'opacity-50 saturate-0 border-dashed' : ''} ${isDone ? 'opacity-75 saturate-75' : ''} ${isHovered ? 'ring-2 ring-indigo-400 dark:ring-indigo-500 ring-offset-1 dark:ring-offset-slate-900 z-30' : ''}`}
                                                     style={{
                                                         left: (offset + VISUAL_SHIFT_DAYS) * DAY_WIDTH,
-                                                        width: blockWidth,
+                                                        width: Math.max(blockWidth, 32), // Min width for clickability
                                                         height: 22,
                                                         top: chunkTop, // Waterfall stacking
                                                     }}
+                                                    onClick={() => !isDependencyLocked && onChunkClick && onChunkClick(task.id, isChunkDone ? prevAccum : targetHoursIfClicked)}
                                                     onMouseEnter={(e) => {
                                                         const rect = e.currentTarget.getBoundingClientRect();
                                                         setActiveTooltip({
@@ -646,9 +582,30 @@ export const GanttChart: React.FC<GanttChartProps> = ({
                                                     onMouseLeave={() => setActiveTooltip(null)}
                                                 >
                                                     <div className="absolute inset-0 bg-white/20 pointer-events-none"></div>
-                                                    {isChunkDone && <div className="absolute w-full h-full bg-slate-900/30 dark:bg-black/50 z-30 pointer-events-none flex items-center justify-center text-white/50 text-xs">✓</div>}
-                                                    {blockWidth > 18 && !isChunkDone && (
-                                                        <span className="text-[9px] font-bold text-white z-30 relative drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">
+                                                    
+                                                    {/* Interactive Button Logic MOVED HERE from Sidebar */}
+                                                    <div className={`
+                                                        flex items-center justify-center w-4 h-4 rounded shadow-sm border text-[8px] font-bold transition-all duration-200 flex-shrink-0 z-30 relative mr-1
+                                                        ${isChunkDone 
+                                                            ? 'bg-emerald-600 dark:bg-emerald-500 text-white border-emerald-700 dark:border-emerald-400 hover:bg-emerald-700 dark:hover:bg-emerald-600' 
+                                                            : isPartiallyDone
+                                                                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700'
+                                                                : isDependencyLocked 
+                                                                    ? 'bg-slate-100 text-slate-300 border-slate-200 dark:bg-slate-800/50 dark:text-slate-600 dark:border-slate-700 cursor-not-allowed opacity-70' 
+                                                                    : 'bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:border-emerald-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}
+                                                    `}>
+                                                         {isChunkDone ? (
+                                                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                                                                    <path fillRule="evenodd" d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z" clipRule="evenodd" />
+                                                                </svg>
+                                                            ) : (
+                                                                <span className="font-mono">{index + 1}</span>
+                                                            )}
+                                                    </div>
+
+                                                    {/* Hours Text */}
+                                                    {blockWidth > 24 && (
+                                                        <span className="text-[9px] font-bold text-white z-30 relative drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)] truncate">
                                                             {hours}h
                                                         </span>
                                                     )}
