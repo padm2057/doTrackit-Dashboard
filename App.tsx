@@ -426,23 +426,16 @@ export default function App() {
                 getInputValue={getInputValue}
             />
 
-            {/* Row 1: Analytics (Critical Analysis, Daily Workload, Schedule Scenarios) */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <InsightPanel 
-                    analysis={analysis}
-                    tasks={projectData.tasks}
-                    smartGoal={projectData.smart_goal}
-                    onApplyOptimizations={handleApplyOptimizations}
-                />
-                <WorkloadChart 
-                    data={dailyWorkload}
-                    isDarkMode={isDarkMode}
-                    weekdayHours={weekdayHours}
-                    setWeekdayHours={setWeekdayHours}
-                    weekendHours={weekendHours}
-                    setWeekendHours={setWeekendHours}
-                    readOnly={isLocked}
-                />
+            {/* Row 1: Full Width Analysis */}
+            <InsightPanel 
+                analysis={analysis}
+                tasks={projectData.tasks}
+                smartGoal={projectData.smart_goal}
+                onApplyOptimizations={handleApplyOptimizations}
+            />
+
+            {/* Row 2: 4-Column Metrics Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
                 <CapacitySimulatorChart 
                     tasks={projectData.tasks}
                     currentWeekday={weekdayHours}
@@ -454,9 +447,25 @@ export default function App() {
                     readOnly={isLocked}
                     nonWorkingDays={projectData.non_working_days || []}
                 />
+                 <CalendarWidget 
+                    nonWorkingDays={projectData.non_working_days || []}
+                    onToggleDay={handleToggleNonWorkingDay}
+                    isReadOnly={isLocked}
+                    startDate={projectStartDate}
+                 />
+                 <ProjectChart tasks={projectData.tasks} isDarkMode={isDarkMode} />
+                 <WorkloadChart 
+                    data={dailyWorkload}
+                    isDarkMode={isDarkMode}
+                    weekdayHours={weekdayHours}
+                    setWeekdayHours={setWeekdayHours}
+                    weekendHours={weekendHours}
+                    setWeekendHours={setWeekendHours}
+                    readOnly={isLocked}
+                />
             </div>
 
-            {/* Row 2: Full Width Timeline */}
+            {/* Row 3: Full Width Timeline */}
             <div className="w-full">
                 <GanttChart 
                     tasks={processedTasks}
@@ -481,7 +490,7 @@ export default function App() {
                 />
             </div>
 
-            {/* Row 3: Table & Remaining Widgets */}
+            {/* Row 4: Table & Image Generator */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2">
                      <ProjectTable 
@@ -495,14 +504,7 @@ export default function App() {
                         onMoveDown={() => {}}
                      />
                 </div>
-                <div className="space-y-6">
-                     <CalendarWidget 
-                        nonWorkingDays={projectData.non_working_days || []}
-                        onToggleDay={handleToggleNonWorkingDay}
-                        isReadOnly={isLocked}
-                        startDate={projectStartDate}
-                     />
-                     <ProjectChart tasks={projectData.tasks} isDarkMode={isDarkMode} />
+                <div>
                      <ImageGenerator initialPrompt={projectData.smart_goal} />
                 </div>
             </div>
