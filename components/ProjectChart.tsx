@@ -37,15 +37,35 @@ export const ProjectChart: React.FC<ProjectChartProps> = ({ tasks, isDarkMode = 
     };
   });
 
-  const getPhaseColor = (phase: string) => {
-    // ... (keep existing logic)
+  const fallbackColors = [
+    '#f43f5e', // rose
+    '#3b82f6', // blue
+    '#10b981', // emerald
+    '#f59e0b', // amber
+    '#8b5cf6', // violet
+    '#ec4899', // pink
+    '#06b6d4', // cyan
+    '#84cc16'  // lime
+  ];
+
+  const getPhaseColor = (phase: string, index?: number) => {
     if (phase.includes('Design')) return '#a855f7'; 
     if (phase.includes('Frontend')) return '#3b82f6';
     if (phase.includes('Backend') || phase.includes('Business')) return '#6366f1';
     if (phase.includes('Verification') || phase.includes('QA')) return '#f43f5e';
     if (phase.includes('Deployment')) return '#10b981';
     if (phase.includes('User')) return '#f59e0b';
-    return isDarkMode ? '#94a3b8' : '#64748b';
+    
+    // Hash the phase name to get a consistent lively color, or use index
+    if (index !== undefined) {
+       return fallbackColors[index % fallbackColors.length];
+    }
+    
+    let hash = 0;
+    for (let i = 0; i < phase.length; i++) {
+        hash = phase.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return fallbackColors[Math.abs(hash) % fallbackColors.length];
   };
 
   const axisColor = isDarkMode ? '#94a3b8' : '#64748b';
@@ -147,7 +167,7 @@ export const ProjectChart: React.FC<ProjectChartProps> = ({ tasks, isDarkMode = 
                         />
                         <Bar dataKey="duration_hours" radius={[0, 4, 4, 0]} name="Duration">
                             {data.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={getPhaseColor(entry.phase)} />
+                                <Cell key={`cell-${index}`} fill={getPhaseColor(entry.phase, index)} />
                             ))}
                         </Bar>
                         </BarChart>
