@@ -38,11 +38,41 @@ export default function App() {
     return DEFAULT_PROJECT_PLAN;
   });
 
-  const [weekdayHours, setWeekdayHours] = useState(6);
-  const [weekendHours, setWeekendHours] = useState(2);
-  const [bufferPercent, setBufferPercent] = useState(30);
-  const [isLocked, setIsLocked] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [weekdayHours, setWeekdayHours] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('agientek_weekdayHours');
+      if (saved !== null) return Number(saved);
+    }
+    return 6;
+  });
+  const [weekendHours, setWeekendHours] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('agientek_weekendHours');
+      if (saved !== null) return Number(saved);
+    }
+    return 2;
+  });
+  const [bufferPercent, setBufferPercent] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('agientek_bufferPercent');
+      if (saved !== null) return Number(saved);
+    }
+    return 30;
+  });
+  const [isLocked, setIsLocked] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('agientek_isLocked');
+      if (saved !== null) return saved === 'true';
+    }
+    return false;
+  });
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof localStorage !== 'undefined') {
+      const saved = localStorage.getItem('agientek_isDarkMode');
+      if (saved !== null) return saved === 'true';
+    }
+    return false;
+  });
 
   // Derived Values
   const projectStartDate = useMemo(() => {
@@ -68,12 +98,18 @@ export default function App() {
   }, [projectData]);
 
   useEffect(() => {
+    localStorage.setItem('agientek_weekdayHours', String(weekdayHours));
+    localStorage.setItem('agientek_weekendHours', String(weekendHours));
+    localStorage.setItem('agientek_bufferPercent', String(bufferPercent));
+    localStorage.setItem('agientek_isLocked', String(isLocked));
+    localStorage.setItem('agientek_isDarkMode', String(isDarkMode));
+
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-  }, [isDarkMode]);
+  }, [weekdayHours, weekendHours, bufferPercent, isLocked, isDarkMode]);
 
   // Helpers
   const getInputValue = (date: Date) => {
@@ -514,7 +550,8 @@ export default function App() {
                 isOpen={isJsonEditorOpen} 
                 setIsOpen={setIsJsonEditorOpen} 
                 initialData={projectData} 
-                onUpdate={setProjectData} 
+                onUpdate={setProjectData}
+                readOnly={isLocked}
             />
 
             <CloudSyncModal 

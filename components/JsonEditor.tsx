@@ -6,9 +6,10 @@ interface JsonEditorProps {
   onUpdate: (data: ProjectPlan) => void;
   isOpen: boolean;
   setIsOpen: (isOpen: boolean) => void;
+  readOnly?: boolean;
 }
 
-export const JsonEditor: React.FC<JsonEditorProps> = ({ initialData, onUpdate, isOpen, setIsOpen }) => {
+export const JsonEditor: React.FC<JsonEditorProps> = ({ initialData, onUpdate, isOpen, setIsOpen, readOnly = false }) => {
   const [jsonText, setJsonText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -50,10 +51,11 @@ export const JsonEditor: React.FC<JsonEditorProps> = ({ initialData, onUpdate, i
         
         <div className="flex-1 p-6 overflow-hidden bg-slate-50 dark:bg-slate-950">
           <textarea
-            className="w-full h-full p-4 font-mono text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+            className={`w-full h-full p-4 font-mono text-sm bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none ${readOnly ? 'opacity-70 cursor-not-allowed' : ''}`}
             value={jsonText}
             onChange={(e) => setJsonText(e.target.value)}
             spellCheck={false}
+            readOnly={readOnly}
           />
         </div>
 
@@ -69,12 +71,14 @@ export const JsonEditor: React.FC<JsonEditorProps> = ({ initialData, onUpdate, i
             >
               Reset
             </button>
-            <button 
-              onClick={handleApply}
-              className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"
-            >
-              Update Project
-            </button>
+            {!readOnly && (
+              <button 
+                onClick={handleApply}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm transition-colors"
+              >
+                Update Project
+              </button>
+            )}
           </div>
         </div>
       </div>
